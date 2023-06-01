@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<Title>As You Like It - File Providers</Title>
+		<Copyright>Copyright © $([System.DateTime]::Now.Year)</Copyright>
+		<Trademark></Trademark>
+		<Product>$(Title)</Product>
+		<VersionPrefix>1.0.0.0</VersionPrefix>
+		<Description>
+			Provides DI for multiple file providers allowing applications to access files from virtual locations:
+			- Normal file system
+			- Azure Blob Storage
+			
+			Can be extended to add implementations for AWS and other cloud providers.
+		</Description>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<PackageProjectUrl></PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<RepositoryUrl>https://github.com/johnfager/AsYouLikeIt.Sdk.Common</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<Authors>John Fager</Authors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\LICENSE">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="AsYouLikeIt.Sdk.Common" Version="3.1.0" />
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.16.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
+	</ItemGroup>
+
+</Project>
