@@ -27,7 +27,17 @@ namespace AsYouLikeit.FileProviders.Services
 
         public Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath)
         {
-            return Task.FromResult(Directory.Exists(GetFilePath(absoluteDirectoryPath))); ;
+            return Task.FromResult(Directory.Exists(GetFilePath(absoluteDirectoryPath)));
+        }
+
+        public Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
+        {
+            var dir = new DirectoryInfo(GetFilePath(absoluteDirectoryPath));
+            if(dir.Exists)
+            {
+                dir.Delete(recursive: true);
+            }
+            return Task.CompletedTask;
         }
 
         public Task<bool> ExistsAsync(string absoluteFilePath)
@@ -45,6 +55,18 @@ namespace AsYouLikeit.FileProviders.Services
             }
 
             return File.WriteAllBytesAsync(GetFilePath(absoluteFilePath), data.ToArray());
+        }
+
+        public Task WriteAllTextAsync(string absoluteFilePath, string contents)
+        {
+            var pathToFile = Path.GetDirectoryName(absoluteFilePath);
+
+            if (pathToFile != null)
+            {
+                Directory.CreateDirectory(pathToFile);
+            }
+
+            return File.WriteAllTextAsync(GetFilePath(absoluteFilePath), contents);
         }
 
         public async Task<Stream> GetStreamAsync(string absoluteFilePath)

@@ -22,6 +22,7 @@ namespace AsYouLikeit.FileProviders.Services
         private readonly ILogger<AzureBlobFileService> _logger;
 
         private BlobClient _blobClient;
+        private BlobContainerClient _blobContainerClient;
 
         public string ImplementationIdentifier => IDENTIFIER;
 
@@ -37,6 +38,16 @@ namespace AsYouLikeit.FileProviders.Services
             return (await (await GetBlobClientAsync(absoluteDirectoryPath)).ExistsAsync()).Value;
         }
 
+        public async Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
+        {
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath);
+            await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(prefix: absoluteDirectoryPath))
+            {
+                await blobContainerClient.DeleteBlobAsync(blobItem.Name, DeleteSnapshotsOption.IncludeSnapshots);
+                Console.WriteLine($"Deleted blob: {blobItem.Name}");
+            }
+        }
+
         public async Task<bool> ExistsAsync(string absoluteFilePath)
         {
             return (await (await GetBlobClientAsync(absoluteFilePath)).ExistsAsync()).Value;
@@ -46,7 +57,16 @@ namespace AsYouLikeit.FileProviders.Services
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
             await blobClient.DeleteIfExistsAsync();
-            await blobClient.UploadAsync(new MemoryStream(data.ToArray()));
+            using (var stream = new MemoryStream(data.ToArray()))
+            {
+                await blobClient.UploadAsync(stream);
+            }
+        }
+
+        public Task WriteAllTextAsync(string absoluteFilePath, string content)
+        {
+            var data = Encoding.UTF8.GetBytes(content);
+            return WriteAllBytesAsync(absoluteFilePath, data);
         }
 
         public async Task<Stream> GetStreamAsync(string absoluteFilePath)
@@ -107,9 +127,24 @@ namespace AsYouLikeit.FileProviders.Services
 
         #region helpers
 
+        private async Task<BlobContainerClient> GetBlobContainerClientAsync(string pathPrefix)
+        {
+            if (_blobContainerClient == null)
+            {
+
+                var blobPath = GetBlobPath(pathPrefix);
+
+                var blobServiceClient = new BlobServiceClient(_connString);
+                _blobContainerClient = blobServiceClient.GetBlobContainerClient(blobPath.ContainerName);
+
+                await _blobContainerClient.CreateIfNotExistsAsync();
+            }
+            return _blobContainerClient;
+        }
+
         private async Task<BlobClient> GetBlobClientAsync(string absolutePath)
         {
-            if (_blobClient != null)
+            if (_blobClient == null)
             {
                 var blobPath = GetBlobPath(absolutePath);
 

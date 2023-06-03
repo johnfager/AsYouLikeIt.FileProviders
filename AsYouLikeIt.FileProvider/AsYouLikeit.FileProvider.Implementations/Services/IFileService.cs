@@ -10,6 +10,8 @@ namespace AsYouLikeit.FileProviders.Services
 
         Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath);
 
+        Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath);
+
         Task<bool> ExistsAsync(string absoluteFilePath);
 
         Task<byte[]> ReadAllBytesAsync(string absoluteFilePath);
@@ -17,6 +19,8 @@ namespace AsYouLikeit.FileProviders.Services
         Task<Stream> GetStreamAsync(string absoluteFilePath);
 
         Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data);
+
+        Task WriteAllTextAsync(string absoluteFilePath, string content);
 
         Task DeleteAsync(string absoluteFilePath);
 
