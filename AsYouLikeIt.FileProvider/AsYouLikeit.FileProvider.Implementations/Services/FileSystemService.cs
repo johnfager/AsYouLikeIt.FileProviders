@@ -79,16 +79,16 @@ namespace AsYouLikeit.FileProviders.Services
             return File.ReadAllBytesAsync(GetFilePathValidateExists(absoluteFilePath));
         }
 
-        public Task DeleteAsync(string absoluteFilePath)
-        {
-            File.Delete(GetFilePathValidateExists(absoluteFilePath));
-            return Task.CompletedTask;
-        }
-
         public async Task<string> ReadAllTextAsync(string absoluteFilePath)
         {
             var bytes = await File.ReadAllBytesAsync(GetFilePathValidateExists(absoluteFilePath));
             return Encoding.UTF8.GetString(bytes);
+        }
+
+        public Task DeleteAsync(string absoluteFilePath)
+        {
+            File.Delete(GetFilePathValidateExists(absoluteFilePath));
+            return Task.CompletedTask;
         }
 
         //public Task<string[]> GetAllFilePathsOfType(string absoluteDirectoryPath, string fileType)
