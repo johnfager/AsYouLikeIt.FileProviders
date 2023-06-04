@@ -6,5 +6,9 @@ namespace AsYouLikeit.FileProviders
         public string StorageAccountName { get; set; }
 
         public string AccessKey { get; set; }
+
+        public bool UseLowerCase { get; set; }
+
+        public string EndpointSuffix { get; set; }
     }
 }

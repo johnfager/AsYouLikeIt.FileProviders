@@ -1,10 +1,7 @@
 ﻿using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -36,10 +33,10 @@ namespace AsYouLikeit.FileProviders.Services
 
             var directories = new List<string>();
 
-            if(dir.Exists)
+            if (dir.Exists)
             {
                 var dirs = dir.GetDirectories();
-                foreach( var d in dirs)
+                foreach (var d in dirs)
                 {
                     directories.Add(d.Name);
                 }

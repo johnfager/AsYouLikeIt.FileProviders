@@ -27,7 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\AsYouLikeit.FileProvider.Implementations\AsYouLikeit.FileProviders.csproj" />
+		<ProjectReference Include="..\AsYouLikeit.FileProvider\AsYouLikeit.FileProviders.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
