@@ -1,6 +1,7 @@
 ﻿using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 
 namespace AsYouLikeit.FileProviders.Services
 {
@@ -44,6 +46,25 @@ namespace AsYouLikeit.FileProviders.Services
                 await blobContainerClient.DeleteBlobAsync(blobItem.Name, DeleteSnapshotsOption.IncludeSnapshots);
                 Console.WriteLine($"Deleted blob: {blobItem.Name}");
             }
+        }
+
+        public async Task<List<string>> ListSubDirectoriesAsync(string absoluteDirectoryPath)
+        {
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath);
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath);
+
+            var directories = new List<string>();
+
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: blobPath.Path + "/", delimiter: "/"))
+            {
+                if (blobHierarchyItem.IsPrefix && !string.Equals(blobHierarchyItem.Prefix, blobPath.Path))
+                {
+                    string childDirectory = blobHierarchyItem.Prefix.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+                    directories.Add(childDirectory);
+                }
+            }
+
+            return directories;
         }
 
         public async Task<bool> ExistsAsync(string absoluteFilePath)

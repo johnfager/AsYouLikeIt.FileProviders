@@ -172,6 +172,33 @@ namespace AsYouLikeIt.FileProvider.Tests
             Assert.False(await _fileService.ExistsAsync(filePath2));
         }
 
+        [Fact]
+        public async Task TestDirectoriesAsync()
+        {
+            var bytes1 = GenerateRandomBytes();
+            var bytes2 = GenerateRandomBytes();
+            var bytes3 = GenerateRandomBytes();
+
+            var directoryPath = "testcontainer/validation-dirs";
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "B/bytes2.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "C/bytes2.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            var dirs = await _fileService.ListSubDirectoriesAsync(directoryPath);
+
+            Assert.True(dirs.Count == 3);
+            Assert.True(dirs[0] == "A");
+            Assert.True(dirs[1] == "B");
+            Assert.True(dirs[2] == "C");
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+        }
+
         #region helpers
 
         public byte[] GenerateRandomBytes()
