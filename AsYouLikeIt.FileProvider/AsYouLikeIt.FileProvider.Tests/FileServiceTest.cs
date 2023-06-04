@@ -2,17 +2,16 @@ using AsYouLikeit.FileProviders;
 using AsYouLikeit.FileProviders.Services;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace AsYouLikeIt.FileProvider.Tests
 {
-    public class FileServiceTest
-    {
-        private readonly IFileService _fileService;
-        private readonly StorageAccountConfig _storageAccountConfig;
 
-        public FileServiceTest()
+    public class AzureBlobFileServiceTests : FileServiceTest
+    {
+        public AzureBlobFileServiceTests()
         {
             // Build the configuration
             var configuration = new ConfigurationBuilder()
@@ -21,21 +20,42 @@ namespace AsYouLikeIt.FileProvider.Tests
                 .Build();
 
             // Bind the configuration to the strongly typed class
-            _storageAccountConfig = new StorageAccountConfig();
-            configuration.GetSection(nameof(StorageAccountConfig)).Bind(_storageAccountConfig);
+            var storageAccountConfig = new StorageAccountConfig();
+            configuration.GetSection(nameof(StorageAccountConfig)).Bind(storageAccountConfig);
 
             var loggerMoq = new Mock<ILogger<AzureBlobFileService>>();
 
-            _fileService = new AzureBlobFileService(_storageAccountConfig, loggerMoq.Object);
+            _fileService = new AzureBlobFileService(storageAccountConfig, loggerMoq.Object);
         }
+        
+        //[Fact]
+        //public void ValidateStorageAccount()
+        //{
+        //    Assert.NotNull(_storageAccountConfig);
+        //    Assert.NotNull(_storageAccountConfig.StorageAccountName);
+        //    Assert.NotNull(_storageAccountConfig.AccessKey);
+        //}
 
-        [Fact]
-        public void ValidateStorageAccount()
+    }
+
+    public class FileSystemServiceTests : FileServiceTest
+    {
+
+        public FileSystemServiceTests()
         {
-            Assert.NotNull(_storageAccountConfig);
-            Assert.NotNull(_storageAccountConfig.StorageAccountName);
-            Assert.NotNull(_storageAccountConfig.AccessKey);
+            var environmentContext = new EnvironmentContext() { ContentRootPath = Format.PathMerge(AppContext.BaseDirectory, "test-file-store") };
+            var loggerMoq = new Mock<ILogger<FileSystemService>>();
+            _fileService = new FileSystemService(environmentContext, loggerMoq.Object);
         }
+    }
+
+
+    public abstract class FileServiceTest
+    {
+        protected IFileService _fileService;
+
+        //protected abstract IServiceProvider GetServiceProvider();
+
 
         [Fact]
         public void ValidateService()

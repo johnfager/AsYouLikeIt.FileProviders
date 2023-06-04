@@ -48,7 +48,8 @@ namespace AsYouLikeit.FileProviders.Services
 
         public async Task<bool> ExistsAsync(string absoluteFilePath)
         {
-            return (await (await GetBlobClientAsync(absoluteFilePath)).ExistsAsync()).Value;
+            var blobClient = await GetBlobClientAsync(absoluteFilePath);
+            return await blobClient.ExistsAsync();
         }
 
         public async Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data)
@@ -69,7 +70,7 @@ namespace AsYouLikeit.FileProviders.Services
         public async Task<Stream> GetStreamAsync(string absoluteFilePath)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            if (!(await blobClient.ExistsAsync()).Value)
+            if (!await blobClient.ExistsAsync())
             {
                 throw new DataNotFoundException(absoluteFilePath);
             }
@@ -84,15 +85,14 @@ namespace AsYouLikeit.FileProviders.Services
         public async Task<byte[]> ReadAllBytesAsync(string absoluteFilePath)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            if (!(await blobClient.ExistsAsync()).Value)
+            if (!await blobClient.ExistsAsync())
             {
                 throw new DataNotFoundException(absoluteFilePath);
             }
 
             //Read operation: Read the contents of the blob.
             byte[] bytes = null;
-            var msRead = new MemoryStream();
-            using (msRead)
+            using (var msRead = new MemoryStream())
             {
                 await blobClient.DownloadToAsync(msRead);
                 msRead.Position = 0;
@@ -104,11 +104,10 @@ namespace AsYouLikeit.FileProviders.Services
         public async Task DeleteAsync(string absoluteFilePath)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            if (!(await blobClient.ExistsAsync()).Value)
+            if (!await blobClient.ExistsAsync())
             {
                 throw new DataNotFoundException(absoluteFilePath);
             }
-
             await blobClient.DeleteIfExistsAsync();
         }
 
