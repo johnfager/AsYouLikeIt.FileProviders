@@ -21,9 +21,6 @@ namespace AsYouLikeit.FileProviders.Services
         private readonly string _connString;
         private readonly ILogger<AzureBlobFileService> _logger;
 
-        private BlobClient _blobClient;
-        private BlobContainerClient _blobContainerClient;
-
         public string ImplementationIdentifier => IDENTIFIER;
 
         public AzureBlobFileService(StorageAccountConfig resourceAssetConfig, ILogger<AzureBlobFileService> logger)
@@ -35,13 +32,14 @@ namespace AsYouLikeit.FileProviders.Services
 
         public async Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath)
         {
-            return (await (await GetBlobClientAsync(absoluteDirectoryPath)).ExistsAsync()).Value;
+            return await (await GetBlobClientAsync(absoluteDirectoryPath)).ExistsAsync();
         }
 
         public async Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath);
             var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath);
-            await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(prefix: absoluteDirectoryPath))
+            await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(prefix: blobPath.Path))
             {
                 await blobContainerClient.DeleteBlobAsync(blobItem.Name, DeleteSnapshotsOption.IncludeSnapshots);
                 Console.WriteLine($"Deleted blob: {blobItem.Name}");
@@ -50,16 +48,16 @@ namespace AsYouLikeit.FileProviders.Services
 
         public async Task<bool> ExistsAsync(string absoluteFilePath)
         {
-            return (await (await GetBlobClientAsync(absoluteFilePath)).ExistsAsync()).Value;
+            var blobClient = await GetBlobClientAsync(absoluteFilePath);
+            return await blobClient.ExistsAsync();
         }
 
         public async Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            await blobClient.DeleteIfExistsAsync();
             using (var stream = new MemoryStream(data.ToArray()))
             {
-                await blobClient.UploadAsync(stream);
+                await blobClient.UploadAsync(stream, overwrite: true);
             }
         }
 
@@ -72,7 +70,7 @@ namespace AsYouLikeit.FileProviders.Services
         public async Task<Stream> GetStreamAsync(string absoluteFilePath)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            if (!(await blobClient.ExistsAsync()).Value)
+            if (!await blobClient.ExistsAsync())
             {
                 throw new DataNotFoundException(absoluteFilePath);
             }
@@ -87,15 +85,14 @@ namespace AsYouLikeit.FileProviders.Services
         public async Task<byte[]> ReadAllBytesAsync(string absoluteFilePath)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            if (!(await blobClient.ExistsAsync()).Value)
+            if (!await blobClient.ExistsAsync())
             {
                 throw new DataNotFoundException(absoluteFilePath);
             }
 
             //Read operation: Read the contents of the blob.
             byte[] bytes = null;
-            var msRead = new MemoryStream();
-            using (msRead)
+            using (var msRead = new MemoryStream())
             {
                 await blobClient.DownloadToAsync(msRead);
                 msRead.Position = 0;
@@ -107,11 +104,10 @@ namespace AsYouLikeit.FileProviders.Services
         public async Task DeleteAsync(string absoluteFilePath)
         {
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
-            if (!(await blobClient.ExistsAsync()).Value)
+            if (!await blobClient.ExistsAsync())
             {
                 throw new DataNotFoundException(absoluteFilePath);
             }
-
             await blobClient.DeleteIfExistsAsync();
         }
 
@@ -129,31 +125,23 @@ namespace AsYouLikeit.FileProviders.Services
 
         private async Task<BlobContainerClient> GetBlobContainerClientAsync(string pathPrefix)
         {
-            if (_blobContainerClient == null)
-            {
+            var blobPath = GetBlobPath(pathPrefix);
 
-                var blobPath = GetBlobPath(pathPrefix);
+            var blobServiceClient = new BlobServiceClient(_connString);
+            var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobPath.ContainerName);
+            await blobContainerClient.CreateIfNotExistsAsync();
 
-                var blobServiceClient = new BlobServiceClient(_connString);
-                _blobContainerClient = blobServiceClient.GetBlobContainerClient(blobPath.ContainerName);
-
-                await _blobContainerClient.CreateIfNotExistsAsync();
-            }
-            return _blobContainerClient;
+            return blobContainerClient;
         }
 
         private async Task<BlobClient> GetBlobClientAsync(string absolutePath)
         {
-            if (_blobClient == null)
-            {
-                var blobPath = GetBlobPath(absolutePath);
+            var blobPath = GetBlobPath(absolutePath);
 
-                var blobContainerClient = new BlobContainerClient(_connString, blobPath.ContainerName);
-                await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+            var blobContainerClient = new BlobContainerClient(_connString, blobPath.ContainerName);
+            await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
-                _blobClient = blobContainerClient.GetBlobClient(blobPath.Path);
-            }
-            return _blobClient;
+            return blobContainerClient.GetBlobClient(blobPath.Path);
         }
 
         private BlobPath GetBlobPath(string absoluteFilePath)

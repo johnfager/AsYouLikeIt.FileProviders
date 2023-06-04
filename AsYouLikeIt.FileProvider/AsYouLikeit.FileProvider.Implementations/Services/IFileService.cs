@@ -8,7 +8,7 @@ namespace AsYouLikeit.FileProviders.Services
     {
         string ImplementationIdentifier { get; }
 
-        Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath);
+        //Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath);
 
         Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath);
 

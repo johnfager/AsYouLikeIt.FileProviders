@@ -1,4 +1,5 @@
 ﻿using AsYouLikeIt.Sdk.Common.Exceptions;
+using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
@@ -25,15 +26,11 @@ namespace AsYouLikeit.FileProviders.Services
             _environmentContext = environmentContext;
         }
 
-        public Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath)
-        {
-            return Task.FromResult(Directory.Exists(GetFilePath(absoluteDirectoryPath)));
-        }
-
         public Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
-            var dir = new DirectoryInfo(GetFilePath(absoluteDirectoryPath));
-            if(dir.Exists)
+            var fileSystemPath = Path.GetDirectoryName(GetFilePath(absoluteDirectoryPath));
+            var dir = new DirectoryInfo(fileSystemPath);
+            if (dir.Exists)
             {
                 dir.Delete(recursive: true);
             }
@@ -42,53 +39,56 @@ namespace AsYouLikeit.FileProviders.Services
 
         public Task<bool> ExistsAsync(string absoluteFilePath)
         {
-            return Task.FromResult(File.Exists(GetFilePath(absoluteFilePath)));
+            var fileSystemPath = GetFilePath(absoluteFilePath);
+            return Task.FromResult(File.Exists(fileSystemPath));
         }
 
         public Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data)
         {
-            var pathToFile = Path.GetDirectoryName(absoluteFilePath);
-
-            if (pathToFile != null)
+            var fileSystemPath = GetFilePath(absoluteFilePath);
+            var fileInfo = new FileInfo(fileSystemPath);
+            if (fileSystemPath != null && !fileInfo.Directory.Exists)
             {
-                Directory.CreateDirectory(pathToFile);
+                Directory.CreateDirectory(fileInfo.Directory.FullName);
             }
-
-            return File.WriteAllBytesAsync(GetFilePath(absoluteFilePath), data.ToArray());
+            return File.WriteAllBytesAsync(fileSystemPath, data.ToArray());
         }
 
         public Task WriteAllTextAsync(string absoluteFilePath, string contents)
         {
-            var pathToFile = Path.GetDirectoryName(absoluteFilePath);
-
-            if (pathToFile != null)
+            var fileSystemPath = GetFilePath(absoluteFilePath);
+            var fileInfo = new FileInfo(fileSystemPath);
+            if (fileSystemPath != null && !fileInfo.Directory.Exists)
             {
-                Directory.CreateDirectory(pathToFile);
+                Directory.CreateDirectory(fileInfo.Directory.FullName);
             }
-
-            return File.WriteAllTextAsync(GetFilePath(absoluteFilePath), contents);
+            return File.WriteAllTextAsync(fileSystemPath, contents);
         }
 
         public async Task<Stream> GetStreamAsync(string absoluteFilePath)
         {
-            return new MemoryStream(await File.ReadAllBytesAsync(GetFilePathValidateExists(absoluteFilePath)));
+            var fileSystemPath = GetFilePathValidateExists(absoluteFilePath);
+            return new MemoryStream(await File.ReadAllBytesAsync(fileSystemPath));
         }
 
         public Task<byte[]> ReadAllBytesAsync(string absoluteFilePath)
         {
-            return File.ReadAllBytesAsync(GetFilePathValidateExists(absoluteFilePath));
-        }
-
-        public Task DeleteAsync(string absoluteFilePath)
-        {
-            File.Delete(GetFilePathValidateExists(absoluteFilePath));
-            return Task.CompletedTask;
+            var fileSystemPath = GetFilePathValidateExists(absoluteFilePath);
+            return File.ReadAllBytesAsync(fileSystemPath);
         }
 
         public async Task<string> ReadAllTextAsync(string absoluteFilePath)
         {
-            var bytes = await File.ReadAllBytesAsync(GetFilePathValidateExists(absoluteFilePath));
+            var fileSystemPath = GetFilePathValidateExists(absoluteFilePath);
+            var bytes = await File.ReadAllBytesAsync(fileSystemPath);
             return Encoding.UTF8.GetString(bytes);
+        }
+
+        public Task DeleteAsync(string absoluteFilePath)
+        {
+            var fileSystemPath = GetFilePathValidateExists(absoluteFilePath);
+            File.Delete(fileSystemPath);
+            return Task.CompletedTask;
         }
 
         //public Task<string[]> GetAllFilePathsOfType(string absoluteDirectoryPath, string fileType)
@@ -99,7 +99,10 @@ namespace AsYouLikeit.FileProviders.Services
 
         #region helpers
 
-        private string GetFilePath(string absoluteFilePath) => Format.PathMerge(_environmentContext.ContentRootPath, absoluteFilePath);
+        private string GetFilePath(string absoluteFilePath) =>
+            _environmentContext.UseForwardSlashed
+            ? Path.GetFullPath(Format.PathMergeForwardSlashes(_environmentContext.ContentRootPath, absoluteFilePath.SwitchBackSlashToForwardSlash()))
+            : Path.GetFullPath(Format.PathMerge(_environmentContext.ContentRootPath, absoluteFilePath.SwitchForwardSlashToBackSlash()));
 
         private string GetFilePathValidateExists(string absoluteFilePath)
         {
