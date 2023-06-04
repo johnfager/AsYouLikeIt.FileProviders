@@ -9,7 +9,7 @@
 		<Copyright>Copyright © $([System.DateTime]::Now.Year)</Copyright>
 		<Trademark></Trademark>
 		<Product>$(Title)</Product>
-		<VersionPrefix>1.1.0.0</VersionPrefix>
+		<VersionPrefix>1.2.0.0</VersionPrefix>
 		<Description>
 			Provides DI for multiple file providers allowing applications to access files from virtual locations.
 			Can be extended to add implementations for AWS and other cloud providers.
