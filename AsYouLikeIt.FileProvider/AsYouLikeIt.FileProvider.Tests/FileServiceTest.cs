@@ -2,9 +2,9 @@ using AsYouLikeit.FileProviders;
 using AsYouLikeit.FileProviders.Services;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Security.Cryptography;
 
 namespace AsYouLikeIt.FileProvider.Tests
 {
@@ -27,7 +27,7 @@ namespace AsYouLikeIt.FileProvider.Tests
 
             _fileService = new AzureBlobFileService(storageAccountConfig, loggerMoq.Object);
         }
-        
+
         //[Fact]
         //public void ValidateStorageAccount()
         //{
@@ -40,7 +40,6 @@ namespace AsYouLikeIt.FileProvider.Tests
 
     public class FileSystemServiceTests : FileServiceTest
     {
-
         public FileSystemServiceTests()
         {
             var environmentContext = new EnvironmentContext() { ContentRootPath = Format.PathMerge(AppContext.BaseDirectory, "test-file-store") };
@@ -143,5 +142,49 @@ namespace AsYouLikeIt.FileProvider.Tests
             Assert.False(await _fileService.ExistsAsync(filePath));
             Assert.False(await _fileService.ExistsAsync(filePath2));
         }
+
+        [Fact]
+        public async Task ValidationFileServiceBytesAsync()
+        {
+            var bytes1 = GenerateRandomBytes();
+            var bytes2 = GenerateRandomBytes();
+
+            var directoryPath = "testcontainer/validation-bin";
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            Assert.True(await _fileService.ExistsAsync(filePath1));
+
+            var contents1 = await _fileService.ReadAllBytesAsync(filePath1);
+            Assert.True(bytes1.SequenceEqual(contents1));
+
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            Assert.True(await _fileService.ExistsAsync(filePath2));
+
+            var contents2 = await _fileService.ReadAllBytesAsync(filePath2);
+            Assert.True(bytes2.SequenceEqual(contents2));
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+
+            Assert.False(await _fileService.ExistsAsync(filePath1));
+            Assert.False(await _fileService.ExistsAsync(filePath2));
+        }
+
+        #region helpers
+
+        public byte[] GenerateRandomBytes()
+        {
+            byte[] randomBytes = new byte[256];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+            }
+            return randomBytes;
+        }
+
+        #endregion
+
     }
 }

@@ -25,7 +25,7 @@ namespace AsYouLikeit.FileProviders.Services
             _logger = logger;
             _environmentContext = environmentContext;
         }
-              
+
         public Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
             var fileSystemPath = Path.GetDirectoryName(GetFilePath(absoluteDirectoryPath));
