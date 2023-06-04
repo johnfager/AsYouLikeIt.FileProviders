@@ -1,5 +1,6 @@
 using AsYouLikeit.FileProviders;
 using AsYouLikeit.FileProviders.Services;
+using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -47,7 +48,6 @@ namespace AsYouLikeIt.FileProvider.Tests
             _fileService = new FileSystemService(environmentContext, loggerMoq.Object);
         }
     }
-
 
     public abstract class FileServiceTest
     {
@@ -192,9 +192,9 @@ namespace AsYouLikeIt.FileProvider.Tests
             var dirs = await _fileService.ListSubDirectoriesAsync(directoryPath);
 
             Assert.True(dirs.Count == 3);
-            Assert.True(dirs[0] == "A");
-            Assert.True(dirs[1] == "B");
-            Assert.True(dirs[2] == "C");
+            Assert.True(dirs[0].EqualsCaseInsensitive("A"));
+            Assert.True(dirs[1].EqualsCaseInsensitive("B"));
+            Assert.True(dirs[2].EqualsCaseInsensitive("C"));
 
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }

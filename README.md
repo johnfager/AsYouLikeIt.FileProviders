@@ -12,8 +12,14 @@ An implementation for physical file systems
 ### AzureBlobFileService
 An implementation for Azure Blob Storage file systems.
 
--
+***
 
-## Updates
+## Version History
 
+### 1.2.0.1
 - Added support for listing directories.
+
+### 1.2.1.0
+- Added support for lower case conversion in Azure paths and more blob name safety checking
+- Added support for different EndpointSuffix to StorageAccountConfig
+- Clean up project folder structure

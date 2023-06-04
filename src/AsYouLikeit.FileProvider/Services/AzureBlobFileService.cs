@@ -1,7 +1,6 @@
 ﻿using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
-using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -11,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 
 namespace AsYouLikeit.FileProviders.Services
 {
@@ -19,16 +17,17 @@ namespace AsYouLikeit.FileProviders.Services
     {
         public const string IDENTIFIER = nameof(AzureBlobFileService);
 
-        private readonly StorageAccountConfig _resourceAssetConfig;
+        private readonly StorageAccountConfig _storageAccountConfig;
         private readonly string _connString;
         private readonly ILogger<AzureBlobFileService> _logger;
 
         public string ImplementationIdentifier => IDENTIFIER;
 
-        public AzureBlobFileService(StorageAccountConfig resourceAssetConfig, ILogger<AzureBlobFileService> logger)
+        public AzureBlobFileService(StorageAccountConfig storageAccountConfig, ILogger<AzureBlobFileService> logger)
         {
-            _resourceAssetConfig = resourceAssetConfig;
-            _connString = $"DefaultEndpointsProtocol=https;AccountName={resourceAssetConfig.StorageAccountName};AccountKey={resourceAssetConfig.AccessKey};EndpointSuffix=core.windows.net";
+            _storageAccountConfig = storageAccountConfig;
+            var endpointSuffix = string.IsNullOrWhiteSpace(_storageAccountConfig.EndpointSuffix) ? "core.windows.net" : _storageAccountConfig.EndpointSuffix;
+            _connString = $"DefaultEndpointsProtocol=https;AccountName={_storageAccountConfig.StorageAccountName};AccountKey={_storageAccountConfig.AccessKey};EndpointSuffix={endpointSuffix}";
             _logger = logger;
         }
 
@@ -75,11 +74,17 @@ namespace AsYouLikeit.FileProviders.Services
 
         public async Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data)
         {
-            var blobClient = await GetBlobClientAsync(absoluteFilePath);
+            var blobClientAndBlobPath = await GetBlobClientAndBlobPathAsync(absoluteFilePath);
             using (var stream = new MemoryStream(data.ToArray()))
             {
-                await blobClient.UploadAsync(stream, overwrite: true);
+                await blobClientAndBlobPath.BlobClient.UploadAsync(stream, overwrite: true);
             }
+            var metadata = new Dictionary<string, string>
+            {
+                { "absoluteFilePath", absoluteFilePath },
+                { "originalFileNameCase", blobClientAndBlobPath.BlobPath.OriginalFileNameCase }
+            };
+            await blobClientAndBlobPath.BlobClient.SetMetadataAsync(metadata);
         }
 
         public Task WriteAllTextAsync(string absoluteFilePath, string content)
@@ -138,10 +143,6 @@ namespace AsYouLikeit.FileProviders.Services
             return Encoding.UTF8.GetString(bytes);
         }
 
-        public void Dispose()
-        {
-        }
-
         #region helpers
 
         private async Task<BlobContainerClient> GetBlobContainerClientAsync(string pathPrefix)
@@ -152,28 +153,37 @@ namespace AsYouLikeit.FileProviders.Services
             var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobPath.ContainerName);
             await blobContainerClient.CreateIfNotExistsAsync();
 
+            //var metadata = new Dictionary<string, string>
+            //{
+            //    { "absoluteFilePath", pathPrefix }
+            //};
+            //await blobContainerClient.SetMetadataAsync(metadata);
+
             return blobContainerClient;
         }
-
-        private async Task<BlobClient> GetBlobClientAsync(string absolutePath)
+        private async Task<(BlobClient BlobClient, BlobPath BlobPath)> GetBlobClientAndBlobPathAsync(string absolutePath)
         {
             var blobPath = GetBlobPath(absolutePath);
 
             var blobContainerClient = new BlobContainerClient(_connString, blobPath.ContainerName);
             await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
-            return blobContainerClient.GetBlobClient(blobPath.Path);
+            var blobClient = blobContainerClient.GetBlobClient(blobPath.Path);
+            return (blobClient, blobPath);
         }
+
+        private async Task<BlobClient> GetBlobClientAsync(string absolutePath) => (await GetBlobClientAndBlobPathAsync(absolutePath)).BlobClient;
 
         private BlobPath GetBlobPath(string absoluteFilePath)
         {
-            absoluteFilePath = absoluteFilePath.SwitchBackSlashToForwardSlash();
-            var segments = absoluteFilePath.SplitStringAndTrim("/").ToList();
+            var originalFileName = absoluteFilePath.SplitStringAndTrim("/").ToList().Last();
+            var blobFilePath = absoluteFilePath.MakeBlobNameSafe(makeLower: _storageAccountConfig.UseLowerCase);
+            var segments = blobFilePath.SplitStringAndTrim("/").ToList();
             if (segments.Count < 2)
             {
                 throw new FriendlyArgumentException(nameof(absoluteFilePath), $"{nameof(absoluteFilePath)} '{absoluteFilePath}' is not valid.");
             }
-            return new BlobPath() { ContainerName = segments.First(), Path = Format.PathMergeForwardSlashes(segments.Skip(1).ToArray()) };
+            return new BlobPath() { ContainerName = segments.First(), Path = Format.PathMergeForwardSlashes(segments.Skip(1).ToArray()), OriginalPathCase = absoluteFilePath, OriginalFileNameCase = originalFileName };
         }
 
         private struct BlobPath
@@ -181,6 +191,10 @@ namespace AsYouLikeit.FileProviders.Services
             public string ContainerName;
 
             public string Path;
+
+            public string OriginalPathCase;
+
+            public string OriginalFileNameCase;
         }
 
         #endregion
