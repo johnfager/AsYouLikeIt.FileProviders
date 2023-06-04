@@ -10,6 +10,8 @@ namespace AsYouLikeit.FileProviders.Services
 
         //Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath);
 
+        Task<List<string>> ListSubDirectoriesAsync(string absoluteDirectoryPath);
+
         Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath);
 
         Task<bool> ExistsAsync(string absoluteFilePath);

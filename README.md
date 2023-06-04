@@ -11,3 +11,9 @@ An implementation for physical file systems
 
 ### AzureBlobFileService
 An implementation for Azure Blob Storage file systems.
+
+-
+
+## Updates
+
+- Added support for listing directories.
