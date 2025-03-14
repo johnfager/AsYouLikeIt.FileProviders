@@ -39,7 +39,7 @@ namespace AsYouLikeIt.FileProviders.Services
         public async Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
             var blobPath = this.GetBlobPath(absoluteDirectoryPath, rootPathIsOk: true);
-            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath);
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath, rootPathIsOk: true);
             await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(prefix: blobPath.Path))
             {
                 await blobContainerClient.DeleteBlobAsync(blobItem.Name, DeleteSnapshotsOption.IncludeSnapshots);
@@ -73,7 +73,10 @@ namespace AsYouLikeIt.FileProviders.Services
 
             var files = new List<string>();
 
-            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: blobPath.Path + "/", delimiter: "/"))
+
+            var prefix = (blobPath.Path == string.Empty || blobPath.Path == null) ? blobPath.Path : blobPath.Path + "/";
+
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/"))
             {
                 if (!blobHierarchyItem.IsPrefix)
                 {
