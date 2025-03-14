@@ -1,5 +1,5 @@
 ﻿
-namespace AsYouLikeit.FileProviders
+namespace AsYouLikeIt.FileProviders
 {
     public class EnvironmentContext
     {

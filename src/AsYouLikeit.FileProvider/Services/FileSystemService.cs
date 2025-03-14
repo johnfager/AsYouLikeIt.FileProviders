@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AsYouLikeit.FileProviders.Services
+namespace AsYouLikeIt.FileProviders.Services
 {
     public class FileSystemService : IFileService
     {
@@ -43,6 +43,26 @@ namespace AsYouLikeit.FileProviders.Services
             }
 
             return Task.FromResult(directories);
+        }
+
+
+        public Task<List<string>> ListFilesAsync(string absoluteDirectoryPath)
+        {
+            var fileSystemPath = GetFilePath(absoluteDirectoryPath);
+            var dir = new DirectoryInfo(fileSystemPath);
+
+            var files = new List<string>();
+
+            if (dir.Exists)
+            {
+                var fileInfos = dir.GetFiles();
+                foreach (var f in fileInfos)
+                {
+                    files.Add(f.Name);
+                }
+            }
+
+            return Task.FromResult(files);
         }
 
         public Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)

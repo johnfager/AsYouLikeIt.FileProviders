@@ -1,5 +1,5 @@
-using AsYouLikeit.FileProviders;
-using AsYouLikeit.FileProviders.Services;
+using AsYouLikeIt.FileProviders;
+using AsYouLikeIt.FileProviders.Services;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Configuration;
@@ -29,13 +29,14 @@ namespace AsYouLikeIt.FileProvider.Tests
             _fileService = new AzureBlobFileService(storageAccountConfig, loggerMoq.Object);
         }
 
-        //[Fact]
-        //public void ValidateStorageAccount()
-        //{
-        //    Assert.NotNull(_storageAccountConfig);
-        //    Assert.NotNull(_storageAccountConfig.StorageAccountName);
-        //    Assert.NotNull(_storageAccountConfig.AccessKey);
-        //}
+        [Fact]
+        public async Task ValidateProjectXmlCase()
+        {
+            var filePath = "testprojectdefinitions/projectdefs/test1/ProjectSpecification.xml";
+            Assert.True(await _fileService.ExistsAsync(filePath));
+            var xmlData = await _fileService.ReadAllTextAsync(filePath);
+            Assert.True(!string.IsNullOrWhiteSpace(xmlData));   
+        }
 
     }
 
@@ -48,6 +49,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             _fileService = new FileSystemService(environmentContext, loggerMoq.Object);
         }
     }
+
 
     public abstract class FileServiceTest
     {
@@ -183,7 +185,7 @@ namespace AsYouLikeIt.FileProvider.Tests
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "B/bytes2.bin");
-            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "C/bytes2.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "C/bytes3.bin");
 
             await _fileService.WriteAllBytesAsync(filePath1, bytes1);
             await _fileService.WriteAllBytesAsync(filePath2, bytes2);
@@ -198,6 +200,103 @@ namespace AsYouLikeIt.FileProvider.Tests
 
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }
+
+        [Fact]
+        public async Task TestFilesAsync()
+        {
+            var bytes1 = GenerateRandomBytes();
+            var bytes2 = GenerateRandomBytes();
+            var bytes3 = GenerateRandomBytes();
+
+            var directoryPath = "testcontainer/validation-dirs";
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            // create a sub directory and file
+            var filePathSub = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
+            await _fileService.WriteAllBytesAsync(filePathSub, bytes1);
+
+            var files = await _fileService.ListFilesAsync(directoryPath);
+
+            Assert.Equal(3, files.Count);
+            Assert.True(files[0].EqualsCaseInsensitive("bytes.bin"));
+            Assert.True(files[1].EqualsCaseInsensitive("bytes2.bin"));
+            Assert.True(files[2].EqualsCaseInsensitive("bytes3.bin"));
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+        }
+
+
+        [Fact]
+        public async Task TestFiles2Async()
+        {
+            var bytes1 = GenerateRandomBytes();
+            var bytes2 = GenerateRandomBytes();
+            var bytes3 = GenerateRandomBytes();
+
+            var directoryPath = "booker/xml/monthly/";
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            // create a sub directory and file
+            var filePathSub = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
+            await _fileService.WriteAllBytesAsync(filePathSub, bytes1);
+
+            var files = await _fileService.ListFilesAsync(directoryPath);
+
+            Assert.Equal(3, files.Count);
+            Assert.True(files[0].EqualsCaseInsensitive("bytes.bin"));
+            Assert.True(files[1].EqualsCaseInsensitive("bytes2.bin"));
+            Assert.True(files[2].EqualsCaseInsensitive("bytes3.bin"));
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+        }
+
+        [Fact]
+        public async Task TestRootDirectory()
+        {
+            var bytes1 = GenerateRandomBytes();
+            var bytes2 = GenerateRandomBytes();
+            var bytes3 = GenerateRandomBytes();
+
+            var directoryPath = "booker";
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            // create a sub directory and file
+            var filePathSub = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
+            await _fileService.WriteAllBytesAsync(filePathSub, bytes1);
+
+            var files = await _fileService.ListFilesAsync(directoryPath);
+
+            Assert.Equal(3, files.Count);
+            Assert.True(files[0].EqualsCaseInsensitive("bytes.bin"));
+            Assert.True(files[1].EqualsCaseInsensitive("bytes2.bin"));
+            Assert.True(files[2].EqualsCaseInsensitive("bytes3.bin"));
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+        }
+
+
+
 
         #region helpers
 

@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AsYouLikeit.FileProviders.Services
+namespace AsYouLikeIt.FileProviders.Services
 {
     public class AzureBlobFileService : IFileService
     {
@@ -38,7 +38,7 @@ namespace AsYouLikeit.FileProviders.Services
 
         public async Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
-            var blobPath = this.GetBlobPath(absoluteDirectoryPath);
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath, rootPathIsOk: true);
             var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath);
             await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync(prefix: blobPath.Path))
             {
@@ -49,8 +49,8 @@ namespace AsYouLikeit.FileProviders.Services
 
         public async Task<List<string>> ListSubDirectoriesAsync(string absoluteDirectoryPath)
         {
-            var blobPath = this.GetBlobPath(absoluteDirectoryPath);
-            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath);
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath, rootPathIsOk: true);
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath, rootPathIsOk: true);
 
             var directories = new List<string>();
 
@@ -65,6 +65,26 @@ namespace AsYouLikeit.FileProviders.Services
 
             return directories;
         }
+
+        public async Task<List<string>> ListFilesAsync(string absoluteDirectoryPath)
+        {
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath, rootPathIsOk: true);
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath, rootPathIsOk: true);
+
+            var files = new List<string>();
+
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: blobPath.Path + "/", delimiter: "/"))
+            {
+                if (!blobHierarchyItem.IsPrefix)
+                {
+                    string fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+                    files.Add(fileName);
+                }
+            }
+
+            return files;
+        }
+
 
         public async Task<bool> ExistsAsync(string absoluteFilePath)
         {
@@ -145,9 +165,9 @@ namespace AsYouLikeit.FileProviders.Services
 
         #region helpers
 
-        private async Task<BlobContainerClient> GetBlobContainerClientAsync(string pathPrefix)
+        private async Task<BlobContainerClient> GetBlobContainerClientAsync(string pathPrefix, bool rootPathIsOk = false)
         {
-            var blobPath = GetBlobPath(pathPrefix);
+            var blobPath = GetBlobPath(pathPrefix, rootPathIsOk);
 
             var blobServiceClient = new BlobServiceClient(_connString);
             var blobContainerClient = blobServiceClient.GetBlobContainerClient(blobPath.ContainerName);
@@ -174,15 +194,22 @@ namespace AsYouLikeit.FileProviders.Services
 
         private async Task<BlobClient> GetBlobClientAsync(string absolutePath) => (await GetBlobClientAndBlobPathAsync(absolutePath)).BlobClient;
 
-        private BlobPath GetBlobPath(string absoluteFilePath)
+        private BlobPath GetBlobPath(string absoluteFilePath, bool rootPathIsOk = false)
         {
             var originalFileName = absoluteFilePath.SplitStringAndTrim("/").ToList().Last();
             var blobFilePath = absoluteFilePath.MakeBlobNameSafe(makeLower: _storageAccountConfig.UseLowerCase);
+            _logger.LogDebug($"blobFilePath:\t{blobFilePath}");
             var segments = blobFilePath.SplitStringAndTrim("/").ToList();
-            if (segments.Count < 2)
+
+            if (segments.Count == 1 && rootPathIsOk)
+            {
+                return new BlobPath() { ContainerName = segments.First(), Path = string.Empty, OriginalPathCase = absoluteFilePath, OriginalFileNameCase = originalFileName };
+            }
+            else if (segments.Count < 2)
             {
                 throw new FriendlyArgumentException(nameof(absoluteFilePath), $"{nameof(absoluteFilePath)} '{absoluteFilePath}' is not valid.");
             }
+       
             return new BlobPath() { ContainerName = segments.First(), Path = Format.PathMergeForwardSlashes(segments.Skip(1).ToArray()), OriginalPathCase = absoluteFilePath, OriginalFileNameCase = originalFileName };
         }
 

@@ -2,7 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 
-namespace AsYouLikeit.FileProviders.Services
+namespace AsYouLikeIt.FileProviders.Services
 {
     public interface IFileService
     {
@@ -11,6 +11,8 @@ namespace AsYouLikeit.FileProviders.Services
         //Task<bool> DirectoryExistsAsync(string absoluteDirectoryPath);
 
         Task<List<string>> ListSubDirectoriesAsync(string absoluteDirectoryPath);
+
+        Task<List<string>> ListFilesAsync(string absoluteDirectoryPath);
 
         Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath);
 
