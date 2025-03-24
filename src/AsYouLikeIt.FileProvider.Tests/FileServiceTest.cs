@@ -295,7 +295,32 @@ namespace AsYouLikeIt.FileProvider.Tests
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }
 
+        [Fact]
+        public async Task TestComplexFileName()
+        {
+            var bytes1 = GenerateRandomBytes();
+            var bytes2 = GenerateRandomBytes();
+            var bytes3 = GenerateRandomBytes();
 
+            var directoryPath = "booker/sde";
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes1@2025.03.16.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2-@2025.03.16.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "Hist_FromDate_2024-07-01_ToDate_2024-12-31_run@03.16.2025.Payments.csv");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            var files = await _fileService.ListFilesAsync(directoryPath);
+
+            Assert.Equal(3, files.Count);
+            Assert.True(files[0].EqualsCaseInsensitive("bytes1@2025.03.16.bin"));
+            Assert.True(files[1].EqualsCaseInsensitive("bytes2-@2025.03.16.bin"));
+            Assert.True(files[2].EqualsCaseInsensitive("Hist_FromDate_2024-07-01_ToDate_2024-12-31_run@03.16.2025.Payments.csv"));
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+        }
 
 
         #region helpers
