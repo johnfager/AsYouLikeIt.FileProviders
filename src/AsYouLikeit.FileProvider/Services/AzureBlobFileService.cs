@@ -1,4 +1,5 @@
-﻿using AsYouLikeIt.Sdk.Common.Exceptions;
+﻿using AsYouLikeit.FileProviders;
+using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Azure.Storage.Blobs;
@@ -80,12 +81,58 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 if (!blobHierarchyItem.IsPrefix)
                 {
-                    string fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+                    var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
                     files.Add(fileName);
                 }
             }
 
             return files;
+        }
+
+        public async Task<List<IFileMetadata>> ListFilesWithMetadataAsync(string absoluteDirectoryPath)
+        {
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath, rootPathIsOk: true);
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath, rootPathIsOk: true);
+
+            var files = new List<IFileMetadata>();
+
+            var prefix = (blobPath.Path == string.Empty || blobPath.Path == null) ? blobPath.Path : blobPath.Path + "/";
+
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/"))
+            {
+                if (!blobHierarchyItem.IsPrefix)
+                {
+                    var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+                    var file = new FileMetdataBase
+                    {
+                        FullPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName), // full path of the file
+                        DirectoryPath = blobPath.Path,//Format.PathMergeForwardSlashes( blobPath. blobHierarchyItem.Blob.Name.Substring(0, blobHierarchyItem.Blob.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
+                        FileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes(), // file name
+                        Size = blobHierarchyItem.Blob.Properties.ContentLength ?? 0, // size in bytes
+                        LastModified = blobHierarchyItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow // last modified date
+                    };
+                    files.Add(file);
+                }
+            }
+
+            return files;
+        }
+
+        public async Task<IFileMetadata> GetFileMetadataAsync(string absoluteFilePath)
+        {
+            var blobPath = this.GetBlobPath(absoluteFilePath, rootPathIsOk: true);
+
+            var blobClient = await GetBlobClientAsync(absoluteFilePath);
+            var blobProperties = await blobClient.GetPropertiesAsync() ?? throw new DataNotFoundException($"File not found: {absoluteFilePath}");
+            var file = new FileMetdataBase
+            {
+                FullPath = blobPath.Path, // full path of the file
+                DirectoryPath = blobPath.Path.Substring(0, blobClient.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
+                FileName = blobPath.Path.Substring(blobClient.Name.LastIndexOf('/') + 1), // file name
+                Size = blobProperties.Value.ContentLength, // size in bytes
+                LastModified = blobProperties.Value.LastModified // last modified date
+            };
+            return file;
         }
 
 
@@ -212,7 +259,7 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 throw new FriendlyArgumentException(nameof(absoluteFilePath), $"{nameof(absoluteFilePath)} '{absoluteFilePath}' is not valid.");
             }
-       
+
             return new BlobPath() { ContainerName = segments.First(), Path = Format.PathMergeForwardSlashes(segments.Skip(1).ToArray()), OriginalPathCase = absoluteFilePath, OriginalFileNameCase = originalFileName };
         }
 

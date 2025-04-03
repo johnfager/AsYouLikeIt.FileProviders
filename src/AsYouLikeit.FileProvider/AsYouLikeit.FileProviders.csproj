@@ -9,7 +9,7 @@
 		<Copyright>Copyright © $([System.DateTime]::Now.Year)</Copyright>
 		<Trademark></Trademark>
 		<Product>$(Title)</Product>
-		<VersionPrefix>1.2.2.2-beta</VersionPrefix>
+		<VersionPrefix>1.2.3.0-beta</VersionPrefix>
 		<Description>
 			Provides DI for multiple file providers allowing applications to access files from virtual locations.
 			Can be extended to add implementations for AWS and other cloud providers.
@@ -18,6 +18,7 @@
 			- Normal file system
 			- Azure Blob Storage
 			- List file names in a directory
+			- List file metadata in a directory
 		</Description>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<PackageProjectUrl></PackageProjectUrl>

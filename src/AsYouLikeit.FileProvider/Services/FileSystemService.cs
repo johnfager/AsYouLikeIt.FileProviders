@@ -1,7 +1,9 @@
-﻿using AsYouLikeIt.Sdk.Common.Exceptions;
+﻿using AsYouLikeit.FileProviders;
+using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -64,6 +66,53 @@ namespace AsYouLikeIt.FileProviders.Services
 
             return Task.FromResult(files);
         }
+
+        public Task<List<IFileMetadata>> ListFilesWithMetadataAsync(string absoluteDirectoryPath)
+        {
+            var fileSystemPath = GetFilePath(absoluteDirectoryPath);
+            var dir = new DirectoryInfo(fileSystemPath);
+
+            var files = new List<IFileMetadata>();
+
+            if (dir.Exists)
+            {
+                var fileInfos = dir.GetFiles();
+                foreach (var f in fileInfos)
+                {
+                    var file = new FileMetdataBase
+                    {
+                        FullPath = f.FullName, // full path of the file
+                        DirectoryPath = f.Directory?.FullName, // directory path
+                        FileName = f.Name, // file name
+                        Size = f.Length, // size in bytes
+                        LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
+                    };
+                    files.Add(file);
+                }
+            }
+
+            return Task.FromResult(files);
+        }
+
+        public Task<IFileMetadata> GetFileMetadataAsync(string absoluteFilePath)
+        {
+            var fileSystemPath = GetFilePath(absoluteFilePath);
+            if (!File.Exists(fileSystemPath))
+            {
+                throw new DataNotFoundException($"File not found: {fileSystemPath}");
+            }
+            var f = new FileInfo(fileSystemPath);
+            var file = new FileMetdataBase
+            {
+                FullPath = f.FullName, // full path of the file
+                DirectoryPath = f.Directory?.FullName, // directory path
+                FileName = f.Name, // file name
+                Size = f.Length, // size in bytes
+                LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
+            };
+            return Task.FromResult<IFileMetadata>(file);
+        }
+
 
         public Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
