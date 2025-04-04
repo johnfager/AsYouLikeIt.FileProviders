@@ -79,10 +79,13 @@ namespace AsYouLikeIt.FileProviders.Services
                 var fileInfos = dir.GetFiles();
                 foreach (var f in fileInfos)
                 {
+
+                    throw new NotImplementedException("Add relative and full paths to metadata");
+
                     var file = new FileMetdataBase
                     {
                         FullPath = f.FullName, // full path of the file
-                        DirectoryPath = f.Directory?.FullName, // directory path
+                        FullDirectoryPath = f.Directory?.FullName, // directory path
                         FileName = f.Name, // file name
                         Size = f.Length, // size in bytes
                         LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
@@ -101,11 +104,15 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 throw new DataNotFoundException($"File not found: {fileSystemPath}");
             }
+
+            throw new NotImplementedException("Add relative and full paths to metadata");
+
             var f = new FileInfo(fileSystemPath);
+           
             var file = new FileMetdataBase
             {
                 FullPath = f.FullName, // full path of the file
-                DirectoryPath = f.Directory?.FullName, // directory path
+                FullDirectoryPath = f.Directory?.FullName, // directory path
                 FileName = f.Name, // file name
                 Size = f.Length, // size in bytes
                 LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date

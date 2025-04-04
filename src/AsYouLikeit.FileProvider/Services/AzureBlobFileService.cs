@@ -102,14 +102,18 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 if (!blobHierarchyItem.IsPrefix)
                 {
+
+                    throw new NotImplementedException("Add relative and full paths to metadata");
+
                     var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
                     var file = new FileMetdataBase
                     {
                         FullPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName), // full path of the file
-                        DirectoryPath = blobPath.Path,//Format.PathMergeForwardSlashes( blobPath. blobHierarchyItem.Blob.Name.Substring(0, blobHierarchyItem.Blob.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
+                        FullDirectoryPath = blobPath.Path,//Format.PathMergeForwardSlashes( blobPath. blobHierarchyItem.Blob.Name.Substring(0, blobHierarchyItem.Blob.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
                         FileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes(), // file name
                         Size = blobHierarchyItem.Blob.Properties.ContentLength ?? 0, // size in bytes
-                        LastModified = blobHierarchyItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow // last modified date
+                        LastModified = blobHierarchyItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow, // last modified date
+                         Extension = GetFileExtenstion(blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes()) // file extension
                     };
                     files.Add(file);
                 }
@@ -120,6 +124,10 @@ namespace AsYouLikeIt.FileProviders.Services
 
         public async Task<IFileMetadata> GetFileMetadataAsync(string absoluteFilePath)
         {
+
+
+            throw new NotImplementedException("Add relative and full paths to metadata");
+
             var blobPath = this.GetBlobPath(absoluteFilePath, rootPathIsOk: true);
 
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
@@ -127,7 +135,7 @@ namespace AsYouLikeIt.FileProviders.Services
             var file = new FileMetdataBase
             {
                 FullPath = blobPath.Path, // full path of the file
-                DirectoryPath = blobPath.Path.Substring(0, blobClient.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
+                FullDirectoryPath = blobPath.Path.Substring(0, blobClient.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
                 FileName = blobPath.Path.Substring(blobClient.Name.LastIndexOf('/') + 1), // file name
                 Size = blobProperties.Value.ContentLength, // size in bytes
                 LastModified = blobProperties.Value.LastModified // last modified date
@@ -261,6 +269,20 @@ namespace AsYouLikeIt.FileProviders.Services
             }
 
             return new BlobPath() { ContainerName = segments.First(), Path = Format.PathMergeForwardSlashes(segments.Skip(1).ToArray()), OriginalPathCase = absoluteFilePath, OriginalFileNameCase = originalFileName };
+        }
+
+        private string GetFileExtenstion(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return string.Empty;
+            }
+            var lastDotIndex = fileName.LastIndexOf('.');
+            if (lastDotIndex < 0 || lastDotIndex == fileName.Length - 1)
+            {
+                return string.Empty; // No extension found
+            }
+            return fileName.Substring(lastDotIndex)?.ToLowerInvariant();
         }
 
         private struct BlobPath

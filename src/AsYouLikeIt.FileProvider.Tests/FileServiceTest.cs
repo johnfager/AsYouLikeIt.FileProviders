@@ -35,7 +35,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var filePath = "testprojectdefinitions/projectdefs/test1/ProjectSpecification.xml";
             Assert.True(await _fileService.ExistsAsync(filePath));
             var xmlData = await _fileService.ReadAllTextAsync(filePath);
-            Assert.True(!string.IsNullOrWhiteSpace(xmlData));   
+            Assert.True(!string.IsNullOrWhiteSpace(xmlData));
         }
 
     }
@@ -322,12 +322,100 @@ namespace AsYouLikeIt.FileProvider.Tests
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }
 
+        [Fact]
+        public async Task TestFileMetadataAsync()
+        {
+
+            var directoryPath = "filemetadata/aaaa/bbb/";
+            var startTimeOffset = DateTimeOffset.UtcNow;
+
+            var size1 = 256;
+            var size2 = 500; // 500 bytes
+            var size3 = 1086; // 1086 bytes, to test larger file sizes
+
+            var bytes1 = GenerateRandomBytes(size1);
+            var bytes2 = GenerateRandomBytes(size2);
+            var bytes3 = GenerateRandomBytes(size3);
+
+            var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
+            var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
+            var filePath3 = Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            var files = await _fileService.ListFilesWithMetadataAsync(directoryPath);
+            Assert.Equal(3, files.Count);
+            Assert.True(files[0].FileName.EqualsCaseInsensitive("bytes.bin"));
+            Assert.True(files[1].FileName.EqualsCaseInsensitive("bytes2.bin"));
+            Assert.True(files[2].FileName.EqualsCaseInsensitive("bytes3.bin"));
+
+            // check the metadata for each file
+            
+            // check full path
+            Assert.True(files[0].FullPath.EndsWith(Format.PathMergeForwardSlashes(directoryPath, "bytes.bin")),
+                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes.bin")}'");
+            Assert.True(files[1].FullPath.EndsWith(Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin")),
+                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin")}'");
+            Assert.True(files[2].FullPath.EndsWith(Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin")),
+                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin")}'");
+
+            // check the full directory path
+            foreach (var f in files)
+            {
+                // Ensure the full directory path is correct
+                Assert.True(f.FullDirectoryPath.Contains(Format.PathMergeForwardSlashes(directoryPath)),
+                    $"FullDirectoryPath should be '{Format.PathMergeForwardSlashes(directoryPath)}' for file '{f.FileName}'");
+            }
+
+            // check relative directory path
+            Assert.True(files[0].RelativeDirectoryPath.EqualsCaseInsensitive(directoryPath),
+                $"RelativeDirectoryPath should be '{directoryPath}' for file '{files[0].FileName}'");
+            Assert.True(files[1].RelativeDirectoryPath.EqualsCaseInsensitive(directoryPath),
+                $"RelativeDirectoryPath should be '{directoryPath}' for file '{files[1].FileName}'");
+            Assert.True(files[2].RelativeDirectoryPath.EqualsCaseInsensitive(directoryPath),
+                $"RelativeDirectoryPath should be '{directoryPath}' for file '{files[2].FileName}'");
+
+            // check relative path
+            Assert.True(files[0].RelativeFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes.bin"),
+                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes.bin")}'");
+            Assert.True(files[1].RelativeFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin"),
+                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin")}'");
+            Assert.True(files[2].RelativeFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin"),
+                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin")}'");
+
+            // check file sizes
+            Assert.True(files[0].Size == size1, $"Size of bytes.bin should be {size1}");
+            Assert.True(files[1].Size == size2, $"Size of bytes2.bin should be {size2}");
+            Assert.True(files[2].Size == size3, $"Size of bytes3.bin should be {size3}");
+
+            // check last modified date
+            foreach (var f in files)
+            {
+                Assert.True(f.LastModified > startTimeOffset);
+            }
+
+            // check the extensions
+            foreach(var f in files)
+            {
+                // Ensure the file extension is correct
+                var expectedExtension = ".bin"; // default expected extension for the test files
+                Assert.True(f.Extension.EqualsCaseInsensitive(expectedExtension),
+                    $"FileExtension should be '{expectedExtension}' for file '{f.FileName}'");
+            }
+
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
+        }
+
+
+
 
         #region helpers
 
-        public byte[] GenerateRandomBytes()
+        public byte[] GenerateRandomBytes(int bytes = 256)
         {
-            byte[] randomBytes = new byte[256];
+            byte[] randomBytes = new byte[bytes];
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(randomBytes);
