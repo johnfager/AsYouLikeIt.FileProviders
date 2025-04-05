@@ -5,6 +5,6 @@ namespace AsYouLikeIt.FileProviders
     {
         public string ContentRootPath { get; set; }
 
-        public bool UseForwardSlashed { get; set; }
+        public bool UseForwardSlashes { get; set; }
     }
 }

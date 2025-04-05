@@ -10,9 +10,9 @@ namespace AsYouLikeit.FileProviders
       
         public string FullDirectoryPath { get; set; }
 
-        public string RelativeDirectoryPath { get; set; }
+        public string AbsoluteDirectoryPath { get; set; }
 
-        public string RelativeFilePath { get; set; }
+        public string AbsoluteFilePath { get; set; }
 
         public string FileName { get; set; }
 

@@ -53,7 +53,9 @@ namespace AsYouLikeIt.FileProvider.Tests
 
     public abstract class FileServiceTest
     {
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         protected IFileService _fileService;
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
         //protected abstract IServiceProvider GetServiceProvider();
 
@@ -353,36 +355,20 @@ namespace AsYouLikeIt.FileProvider.Tests
 
             // check the metadata for each file
             
-            // check full path
-            Assert.True(files[0].FullPath.EndsWith(Format.PathMergeForwardSlashes(directoryPath, "bytes.bin")),
+            // check absolute directory path
+            Assert.True(files[0].AbsoluteDirectoryPath.EqualsCaseInsensitive(directoryPath.StripAllLeadingAndTrailingSlashes()),
+                $"AbsoluteDirectoryPath should be '{directoryPath}' for file '{files[0].FileName}'");
+            Assert.True(files[1].AbsoluteDirectoryPath.EqualsCaseInsensitive(directoryPath.StripAllLeadingAndTrailingSlashes()),
+                $"AbsoluteDirectoryPath should be '{directoryPath}' for file '{files[1].FileName}'");
+            Assert.True(files[2].AbsoluteDirectoryPath.EqualsCaseInsensitive(directoryPath.StripAllLeadingAndTrailingSlashes()),
+                $"AbsoluteDirectoryPath should be '{directoryPath}' for file '{files[2].FileName}'");
+
+            // check absolute paths
+            Assert.True(files[0].AbsoluteFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes.bin"),
                 $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes.bin")}'");
-            Assert.True(files[1].FullPath.EndsWith(Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin")),
+            Assert.True(files[1].AbsoluteFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin"),
                 $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin")}'");
-            Assert.True(files[2].FullPath.EndsWith(Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin")),
-                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin")}'");
-
-            // check the full directory path
-            foreach (var f in files)
-            {
-                // Ensure the full directory path is correct
-                Assert.True(f.FullDirectoryPath.Contains(Format.PathMergeForwardSlashes(directoryPath)),
-                    $"FullDirectoryPath should be '{Format.PathMergeForwardSlashes(directoryPath)}' for file '{f.FileName}'");
-            }
-
-            // check relative directory path
-            Assert.True(files[0].RelativeDirectoryPath.EqualsCaseInsensitive(directoryPath),
-                $"RelativeDirectoryPath should be '{directoryPath}' for file '{files[0].FileName}'");
-            Assert.True(files[1].RelativeDirectoryPath.EqualsCaseInsensitive(directoryPath),
-                $"RelativeDirectoryPath should be '{directoryPath}' for file '{files[1].FileName}'");
-            Assert.True(files[2].RelativeDirectoryPath.EqualsCaseInsensitive(directoryPath),
-                $"RelativeDirectoryPath should be '{directoryPath}' for file '{files[2].FileName}'");
-
-            // check relative path
-            Assert.True(files[0].RelativeFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes.bin"),
-                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes.bin")}'");
-            Assert.True(files[1].RelativeFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin"),
-                $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin")}'");
-            Assert.True(files[2].RelativeFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin"),
+            Assert.True(files[2].AbsoluteFilePath == Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin"),
                 $"FullPath should equal '{Format.PathMergeForwardSlashes(directoryPath, "bytes3.bin")}'");
 
             // check file sizes

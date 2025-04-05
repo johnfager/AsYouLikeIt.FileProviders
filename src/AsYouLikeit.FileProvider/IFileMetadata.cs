@@ -20,12 +20,12 @@ namespace AsYouLikeit.FileProviders
         /// <summary>
         /// Gets or sets the relative path of the file from the base directory. This is typically used for storage or display purposes.
         /// </summary>
-        string RelativeDirectoryPath { get; set; }
+        string AbsoluteDirectoryPath { get; set; }
 
         /// <summary>
         /// Gets or sets the relative file path from the base directory. This is typically used for storage or display purposes.
         /// </summary>
-        string RelativeFilePath { get; set; }
+        string AbsoluteFilePath { get; set; }
 
         /// <summary>
         /// Gets or sets the file name.

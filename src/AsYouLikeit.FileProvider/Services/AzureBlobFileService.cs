@@ -107,8 +107,8 @@ namespace AsYouLikeIt.FileProviders.Services
                     {
                         FullPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName), // full path of the file
                         FullDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path),//Format.PathMergeForwardSlashes( blobPath. blobHierarchyItem.Blob.Name.Substring(0, blobHierarchyItem.Blob.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
-                        RelativeDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path), // relative directory path from the base directory (for display/storage purposes)
-                        RelativeFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
+                        AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path), // relative directory path from the base directory (for display/storage purposes)
+                        AbsoluteFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
                         FileName = fileName,
                         Size = blobHierarchyItem.Blob.Properties.ContentLength ?? 0, // size in bytes
                         LastModified = blobHierarchyItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow, // last modified date
