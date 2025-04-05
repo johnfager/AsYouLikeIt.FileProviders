@@ -71,9 +71,7 @@ namespace AsYouLikeIt.FileProviders.Services
         {
             var fileSystemPath = GetFilePath(absoluteDirectoryPath);
             var dir = new DirectoryInfo(fileSystemPath);
-
             var files = new List<IFileMetadata>();
-
             if (dir.Exists)
             {
                 var fileInfos = dir.GetFiles();
@@ -81,8 +79,6 @@ namespace AsYouLikeIt.FileProviders.Services
                 {
                     var file = new FileMetdataBase
                     {
-                        FullPath = f.FullName, // full path of the file
-                        FullDirectoryPath = f.Directory?.FullName, // directory path
                         AbsoluteDirectoryPath = GetAbsolutePath(f.Directory?.FullName), // absolute directory path for display/storage purposes, e.g. "/content/uploads"
                         AbsoluteFilePath = GetAbsolutePath(f.FullName), // absolute file path for display/storage purposes, e.g. "/content/uploads/myfile.txt"
                         FileName = f.Name, // file name
@@ -90,10 +86,12 @@ namespace AsYouLikeIt.FileProviders.Services
                         Size = f.Length, // size in bytes
                         LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
                     };
+                    file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure the metadata dictionary is initialized
+                    file.Metadata["FullPath"] = f.FullName; // ensure we have the full path in the metadata for consistency
+                    file.Metadata["FullDirectoryPath"] = f.Directory?.FullName; // add the directory path to the metadata for reference
                     files.Add(file);
                 }
             }
-
             return Task.FromResult(files);
         }
 
@@ -104,12 +102,9 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 throw new DataNotFoundException($"File not found: {fileSystemPath}");
             }
-
             var f = new FileInfo(fileSystemPath);
             var file = new FileMetdataBase
             {
-                FullPath = f.FullName, // full path of the file
-                FullDirectoryPath = f.Directory?.FullName, // directory path
                 AbsoluteDirectoryPath = GetAbsolutePath(f.Directory?.FullName), // absolute directory path for display/storage purposes, e.g. "/content/uploads"
                 AbsoluteFilePath = GetAbsolutePath(f.FullName), // absolute file path for display/storage purposes, e.g. "/content/uploads/myfile.txt"
                 FileName = f.Name, // file name
@@ -117,6 +112,9 @@ namespace AsYouLikeIt.FileProviders.Services
                 Size = f.Length, // size in bytes
                 LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
             };
+            file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure the metadata dictionary is initialized
+            file.Metadata["FullPath"] = f.FullName; // ensure we have the full path in the metadata for consistency
+            file.Metadata["FullDirectoryPath"] = f.Directory?.FullName; // add the directory path to the metadata for reference
             return Task.FromResult<IFileMetadata>(file);
         }
 

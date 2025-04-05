@@ -6,10 +6,6 @@ namespace AsYouLikeit.FileProviders
 {
     public partial class FileMetdataBase : IFileMetadata
     {
-        public string FullPath { get; set; }
-      
-        public string FullDirectoryPath { get; set; }
-
         public string AbsoluteDirectoryPath { get; set; }
 
         public string AbsoluteFilePath { get; set; }

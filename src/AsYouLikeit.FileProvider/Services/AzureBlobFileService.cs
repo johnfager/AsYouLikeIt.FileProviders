@@ -100,13 +100,14 @@ namespace AsYouLikeIt.FileProviders.Services
 
             await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/"))
             {
+
+                throw new NotImplementedException("Need to update values");
+
                 if (!blobHierarchyItem.IsPrefix)
                 {
                     var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
                     var file = new FileMetdataBase
                     {
-                        FullPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName), // full path of the file
-                        FullDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path),//Format.PathMergeForwardSlashes( blobPath. blobHierarchyItem.Blob.Name.Substring(0, blobHierarchyItem.Blob.Name.LastIndexOf('/')).StripAllLeadingAndTrailingSlashes(), // directory path
                         AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path), // relative directory path from the base directory (for display/storage purposes)
                         AbsoluteFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
                         FileName = fileName,
@@ -115,6 +116,9 @@ namespace AsYouLikeIt.FileProviders.Services
                         Extension = GetFileExtenstion(blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length)),// file extension
 
                     };
+
+                    // add metadata if available
+
                     files.Add(file);
                 }
             }
@@ -135,12 +139,12 @@ namespace AsYouLikeIt.FileProviders.Services
                 blobPath.Path.LastIndexOf('/') > 0 ? blobPath.Path.LastIndexOf('/') : 0)
                 .StripAllLeadingAndTrailingSlashes();
 
+            throw new NotImplementedException("Need to update values");
+
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
             var blobProperties = await blobClient.GetPropertiesAsync() ?? throw new DataNotFoundException($"File not found: {absoluteFilePath}");
             var file = new FileMetdataBase
             {
-                FullPath = blobPath.Path, // full path of the file
-                FullDirectoryPath = directoryPath,
                 FileName = blobPath.Path.Substring(blobClient.Name.LastIndexOf('/') + 1), // file name
                 Size = blobProperties.Value.ContentLength, // size in bytes
                 LastModified = blobProperties.Value.LastModified // last modified date

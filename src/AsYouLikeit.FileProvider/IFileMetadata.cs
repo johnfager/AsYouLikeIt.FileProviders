@@ -7,15 +7,15 @@ namespace AsYouLikeit.FileProviders
 {
     public interface IFileMetadata
     {
-        /// <summary>
-        /// Gets or sets the full path of the file, including the file name.
-        /// </summary>
-        string FullPath { get; set; }
+        ///// <summary>
+        ///// Gets or sets the full path of the file, including the file name.
+        ///// </summary>
+        //string FullPath { get; set; }
 
-        /// <summary>
-        /// Gets or sets the directory path where the file is located.
-        /// </summary>
-        string FullDirectoryPath { get; set; }
+        ///// <summary>
+        ///// Gets or sets the directory path where the file is located.
+        ///// </summary>
+        //string FullDirectoryPath { get; set; }
 
         /// <summary>
         /// Gets or sets the relative path of the file from the base directory. This is typically used for storage or display purposes.
