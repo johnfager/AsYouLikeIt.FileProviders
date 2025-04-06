@@ -4,6 +4,7 @@ using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -101,24 +102,22 @@ namespace AsYouLikeIt.FileProviders.Services
             await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/"))
             {
 
-                throw new NotImplementedException("Need to update values");
-
                 if (!blobHierarchyItem.IsPrefix)
                 {
                     var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
                     var file = new FileMetdataBase
                     {
-                        AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path), // relative directory path from the base directory (for display/storage purposes)
+                        AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path).StripAllLeadingAndTrailingSlashes(), // relative directory path from the base directory (for display/storage purposes)
                         AbsoluteFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
                         FileName = fileName,
                         Size = blobHierarchyItem.Blob.Properties.ContentLength ?? 0, // size in bytes
                         LastModified = blobHierarchyItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow, // last modified date
-                        Extension = GetFileExtenstion(blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length)),// file extension
-
+                        Extension = GetFileExtenstion(blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length))// file extension
                     };
 
-                    // add metadata if available
+                    file.Metadata = blobHierarchyItem.Blob.Metadata;
 
+                    // add metadata if available
                     files.Add(file);
                 }
             }
@@ -133,25 +132,21 @@ namespace AsYouLikeIt.FileProviders.Services
 
             var blobPath = this.GetBlobPath(absoluteFilePath, rootPathIsOk: true);
 
-            //  trim the file and extension off the end of the path to get the container and blob path
-            var directoryPath = blobPath.Path.Substring(0,
-                // if there is a file name, find the last '/' to trim off the file name
-                blobPath.Path.LastIndexOf('/') > 0 ? blobPath.Path.LastIndexOf('/') : 0)
-                .StripAllLeadingAndTrailingSlashes();
-
-            throw new NotImplementedException("Need to update values");
-
             var blobClient = await GetBlobClientAsync(absoluteFilePath);
             var blobProperties = await blobClient.GetPropertiesAsync() ?? throw new DataNotFoundException($"File not found: {absoluteFilePath}");
+
+            var fileName = blobClient.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
             var file = new FileMetdataBase
             {
+                AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path).StripAllLeadingAndTrailingSlashes(), // relative directory path from the base directory (for display/storage purposes)
+                AbsoluteFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
                 FileName = blobPath.Path.Substring(blobClient.Name.LastIndexOf('/') + 1), // file name
                 Size = blobProperties.Value.ContentLength, // size in bytes
-                LastModified = blobProperties.Value.LastModified // last modified date
+                LastModified = blobProperties.Value.LastModified, // last modified date
+                Metadata = blobProperties.Value?.Metadata
             };
             return file;
         }
-
 
         public async Task<bool> ExistsAsync(string absoluteFilePath)
         {
