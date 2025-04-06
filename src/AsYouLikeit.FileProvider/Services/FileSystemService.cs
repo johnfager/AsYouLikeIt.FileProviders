@@ -1,7 +1,9 @@
-﻿using AsYouLikeIt.Sdk.Common.Exceptions;
+﻿using AsYouLikeit.FileProviders;
+using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -64,6 +66,58 @@ namespace AsYouLikeIt.FileProviders.Services
 
             return Task.FromResult(files);
         }
+
+        public Task<List<IFileMetadata>> ListFilesWithMetadataAsync(string absoluteDirectoryPath)
+        {
+            var fileSystemPath = GetFilePath(absoluteDirectoryPath);
+            var dir = new DirectoryInfo(fileSystemPath);
+            var files = new List<IFileMetadata>();
+            if (dir.Exists)
+            {
+                var fileInfos = dir.GetFiles();
+                foreach (var f in fileInfos)
+                {
+                    var file = new FileMetdataBase
+                    {
+                        AbsoluteDirectoryPath = GetAbsolutePath(f.Directory?.FullName), // absolute directory path for display/storage purposes, e.g. "/content/uploads"
+                        AbsoluteFilePath = GetAbsolutePath(f.FullName), // absolute file path for display/storage purposes, e.g. "/content/uploads/myfile.txt"
+                        FileName = f.Name, // file name
+                        Extension = GetFileExtenstion(f.Name), // file extension (e.g., ".txt", ".jpg"). This is typically used for file type identification and handling.
+                        Size = f.Length, // size in bytes
+                        LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
+                    };
+                    file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure the metadata dictionary is initialized
+                    file.Metadata["FullPath"] = f.FullName; // ensure we have the full path in the metadata for consistency
+                    file.Metadata["FullDirectoryPath"] = f.Directory?.FullName; // add the directory path to the metadata for reference
+                    files.Add(file);
+                }
+            }
+            return Task.FromResult(files);
+        }
+
+        public Task<IFileMetadata> GetFileMetadataAsync(string absoluteFilePath)
+        {
+            var fileSystemPath = GetFilePath(absoluteFilePath);
+            if (!File.Exists(fileSystemPath))
+            {
+                throw new DataNotFoundException($"File not found: {fileSystemPath}");
+            }
+            var f = new FileInfo(fileSystemPath);
+            var file = new FileMetdataBase
+            {
+                AbsoluteDirectoryPath = GetAbsolutePath(f.Directory?.FullName), // absolute directory path for display/storage purposes, e.g. "/content/uploads"
+                AbsoluteFilePath = GetAbsolutePath(f.FullName), // absolute file path for display/storage purposes, e.g. "/content/uploads/myfile.txt"
+                FileName = f.Name, // file name
+                Extension = GetFileExtenstion(f.Name), // file extension (e.g., ".txt", ".jpg"). This is typically used for file type identification and handling.
+                Size = f.Length, // size in bytes
+                LastModified = new DateTimeOffset(f.LastWriteTimeUtc, TimeSpan.Zero) // last modified date
+            };
+            file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure the metadata dictionary is initialized
+            file.Metadata["FullPath"] = f.FullName; // ensure we have the full path in the metadata for consistency
+            file.Metadata["FullDirectoryPath"] = f.Directory?.FullName; // add the directory path to the metadata for reference
+            return Task.FromResult<IFileMetadata>(file);
+        }
+
 
         public Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath)
         {
@@ -138,8 +192,27 @@ namespace AsYouLikeIt.FileProviders.Services
 
         #region helpers
 
+        private string GetAbsolutePath(string fullPath)
+        {
+            if (string.IsNullOrEmpty(fullPath))
+            {
+                return string.Empty;
+            }
+
+            if (!fullPath.StartsWith(_environmentContext.ContentRootPath, StringComparison.OrdinalIgnoreCase))
+            {
+                // if the full path does not start with the content root path, return it as is, this should not happen in normal circumstances
+                _logger.LogWarning($"The full path '{fullPath}' does not start with the content root path '{_environmentContext.ContentRootPath}'");
+                return fullPath;
+            }
+
+            var length = _environmentContext.ContentRootPath.Length;
+            var absolutePath = fullPath.Substring(length).SwitchBackSlashToForwardSlash().StripAllLeadingAndTrailingSlashes(); // ensure we are using the correct slash for the environment context
+            return absolutePath;
+        }
+
         private string GetFilePath(string absoluteFilePath) =>
-            _environmentContext.UseForwardSlashed
+            _environmentContext.UseForwardSlashes
             ? Path.GetFullPath(Format.PathMergeForwardSlashes(_environmentContext.ContentRootPath, absoluteFilePath.SwitchBackSlashToForwardSlash()))
             : Path.GetFullPath(Format.PathMerge(_environmentContext.ContentRootPath, absoluteFilePath.SwitchForwardSlashToBackSlash()));
 
@@ -154,6 +227,20 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 return fileName;
             }
+        }
+
+        private string GetFileExtenstion(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return string.Empty;
+            }
+            var lastDotIndex = fileName.LastIndexOf('.');
+            if (lastDotIndex < 0 || lastDotIndex == fileName.Length - 1)
+            {
+                return string.Empty; // No extension found
+            }
+            return fileName.Substring(lastDotIndex)?.ToLowerInvariant();
         }
 
         #endregion

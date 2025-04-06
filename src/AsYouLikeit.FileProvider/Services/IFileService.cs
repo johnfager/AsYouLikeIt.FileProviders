@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using AsYouLikeit.FileProviders;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -13,6 +14,10 @@ namespace AsYouLikeIt.FileProviders.Services
         Task<List<string>> ListSubDirectoriesAsync(string absoluteDirectoryPath);
 
         Task<List<string>> ListFilesAsync(string absoluteDirectoryPath);
+
+        Task<List<IFileMetadata>> ListFilesWithMetadataAsync(string absoluteDirectoryPath);
+
+        Task<IFileMetadata> GetFileMetadataAsync(string absoluteFilePath);
 
         Task DeleteDirectoryAndContentsAsync(string absoluteDirectoryPath);
 

@@ -1,8 +1,10 @@
-﻿using AsYouLikeIt.Sdk.Common.Exceptions;
+﻿using AsYouLikeit.FileProviders;
+using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -80,7 +82,7 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 if (!blobHierarchyItem.IsPrefix)
                 {
-                    string fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+                    var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
                     files.Add(fileName);
                 }
             }
@@ -88,6 +90,72 @@ namespace AsYouLikeIt.FileProviders.Services
             return files;
         }
 
+        public async Task<List<IFileMetadata>> ListFilesWithMetadataAsync(string absoluteDirectoryPath)
+        {
+            var blobPath = this.GetBlobPath(absoluteDirectoryPath, rootPathIsOk: true);
+            var blobContainerClient = await GetBlobContainerClientAsync(absoluteDirectoryPath, rootPathIsOk: true);
+
+            var files = new List<IFileMetadata>();
+
+            var prefix = (blobPath.Path == string.Empty || blobPath.Path == null) ? blobPath.Path : blobPath.Path + "/";
+
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/", traits: BlobTraits.All))
+            {
+
+                if (!blobHierarchyItem.IsPrefix)
+                {
+                    var fileName = blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+                    var file = new FileMetdataBase
+                    {
+                        AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path).StripAllLeadingAndTrailingSlashes(), // relative directory path from the base directory (for display/storage purposes)
+                        AbsoluteFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
+                        FileName = fileName,
+                        Size = blobHierarchyItem.Blob.Properties.ContentLength ?? 0, // size in bytes
+                        LastModified = blobHierarchyItem.Blob.Properties.LastModified ?? DateTimeOffset.UtcNow, // last modified date
+                        Extension = GetFileExtenstion(blobHierarchyItem.Blob.Name.Substring(blobPath.Path.Length))// file extension
+                    };
+
+                    file.Metadata = blobHierarchyItem.Blob.Metadata;
+
+                    file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure it's not null
+                    file.Metadata["ContentHash"] = GetContentHash(blobHierarchyItem.Blob.Properties.ContentHash); // add content hash to metadata if available
+                    file.Metadata["ContentType"] = blobHierarchyItem.Blob.Properties.ContentType; // add content type to metadata if available, this can be useful for serving files correctly
+
+                    // add metadata if available
+                    files.Add(file);
+                }
+            }
+
+            return files;
+        }
+
+        public async Task<IFileMetadata> GetFileMetadataAsync(string absoluteFilePath)
+        {
+
+            // NOTE: This path will have the file name in it, so different from the directory path handling.
+
+            var blobPath = this.GetBlobPath(absoluteFilePath, rootPathIsOk: true);
+
+            var blobClient = await GetBlobClientAsync(absoluteFilePath);
+            var blobProperties = await blobClient.GetPropertiesAsync() ?? throw new DataNotFoundException($"File not found: {absoluteFilePath}");
+
+            var fileName = blobClient.Name.Substring(blobPath.Path.Length).StripAllLeadingAndTrailingSlashes();
+            var file = new FileMetdataBase
+            {
+                AbsoluteDirectoryPath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path).StripAllLeadingAndTrailingSlashes(), // relative directory path from the base directory (for display/storage purposes)
+                AbsoluteFilePath = Format.PathMergeForwardSlashes(blobPath.ContainerName, blobPath.Path, fileName),
+                FileName = blobPath.Path.Substring(blobClient.Name.LastIndexOf('/') + 1), // file name
+                Size = blobProperties.Value.ContentLength, // size in bytes
+                LastModified = blobProperties.Value.LastModified, // last modified date
+                Metadata = blobProperties.Value?.Metadata
+            };
+
+            file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure it's not null
+            file.Metadata["ContentHash"] = GetContentHash(blobProperties.Value.ContentHash); // add content hash to metadata if available
+            file.Metadata["ContentType"] = blobProperties.Value.ContentType; // add content type to metadata if available, this can be useful for serving files correctly
+
+            return file;
+        }
 
         public async Task<bool> ExistsAsync(string absoluteFilePath)
         {
@@ -212,8 +280,31 @@ namespace AsYouLikeIt.FileProviders.Services
             {
                 throw new FriendlyArgumentException(nameof(absoluteFilePath), $"{nameof(absoluteFilePath)} '{absoluteFilePath}' is not valid.");
             }
-       
+
             return new BlobPath() { ContainerName = segments.First(), Path = Format.PathMergeForwardSlashes(segments.Skip(1).ToArray()), OriginalPathCase = absoluteFilePath, OriginalFileNameCase = originalFileName };
+        }
+
+        private string GetFileExtenstion(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                return string.Empty;
+            }
+            var lastDotIndex = fileName.LastIndexOf('.');
+            if (lastDotIndex < 0 || lastDotIndex == fileName.Length - 1)
+            {
+                return string.Empty; // No extension found
+            }
+            return fileName.Substring(lastDotIndex)?.ToLowerInvariant();
+        }
+
+        private string GetContentHash(byte[] contentHash)
+        {
+            if (contentHash != null)
+            {
+                return BitConverter.ToString(contentHash).Replace("-", "").ToLowerInvariant();
+            }
+            return null;
         }
 
         private struct BlobPath
