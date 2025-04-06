@@ -99,7 +99,7 @@ namespace AsYouLikeIt.FileProviders.Services
 
             var prefix = (blobPath.Path == string.Empty || blobPath.Path == null) ? blobPath.Path : blobPath.Path + "/";
 
-            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/"))
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/", traits: BlobTraits.All))
             {
 
                 if (!blobHierarchyItem.IsPrefix)
@@ -116,6 +116,10 @@ namespace AsYouLikeIt.FileProviders.Services
                     };
 
                     file.Metadata = blobHierarchyItem.Blob.Metadata;
+
+                    file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure it's not null
+                    file.Metadata["ContentHash"] = GetContentHash(blobHierarchyItem.Blob.Properties.ContentHash); // add content hash to metadata if available
+                    file.Metadata["ContentType"] = blobHierarchyItem.Blob.Properties.ContentType; // add content type to metadata if available, this can be useful for serving files correctly
 
                     // add metadata if available
                     files.Add(file);
@@ -145,6 +149,11 @@ namespace AsYouLikeIt.FileProviders.Services
                 LastModified = blobProperties.Value.LastModified, // last modified date
                 Metadata = blobProperties.Value?.Metadata
             };
+
+            file.Metadata ??= new Dictionary<string, string>(StringComparer.Ordinal); // ensure it's not null
+            file.Metadata["ContentHash"] = GetContentHash(blobProperties.Value.ContentHash); // add content hash to metadata if available
+            file.Metadata["ContentType"] = blobProperties.Value.ContentType; // add content type to metadata if available, this can be useful for serving files correctly
+
             return file;
         }
 
@@ -287,6 +296,15 @@ namespace AsYouLikeIt.FileProviders.Services
                 return string.Empty; // No extension found
             }
             return fileName.Substring(lastDotIndex)?.ToLowerInvariant();
+        }
+
+        private string GetContentHash(byte[] contentHash)
+        {
+            if (contentHash != null)
+            {
+                return BitConverter.ToString(contentHash).Replace("-", "").ToLowerInvariant();
+            }
+            return null;
         }
 
         private struct BlobPath

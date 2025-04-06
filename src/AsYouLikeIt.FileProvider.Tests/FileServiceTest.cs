@@ -391,6 +391,13 @@ namespace AsYouLikeIt.FileProvider.Tests
                     $"FileExtension should be '{expectedExtension}' for file '{f.FileName}'");
             }
 
+            foreach(var f in files)
+            {
+                var individualFile = await _fileService.GetFileMetadataAsync(f.AbsoluteFilePath);
+                Assert.True(f.FileName == individualFile.FileName,
+                    $"The file name '{f.FileName}' from ListFilesWithMetadataAsync should match the file name '{individualFile.FileName}' from GetFileMetadataAsync");
+            }
+
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }
 
