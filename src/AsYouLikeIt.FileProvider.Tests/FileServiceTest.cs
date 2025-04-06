@@ -394,9 +394,6 @@ namespace AsYouLikeIt.FileProvider.Tests
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }
 
-
-
-
         #region helpers
 
         public byte[] GenerateRandomBytes(int bytes = 256)
