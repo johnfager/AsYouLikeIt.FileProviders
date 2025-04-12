@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace AsYouLikeit.FileProviders
+namespace AsYouLikeIt.FileProviders
 {
     public partial class FileMetdataBase : IFileMetadata
     {

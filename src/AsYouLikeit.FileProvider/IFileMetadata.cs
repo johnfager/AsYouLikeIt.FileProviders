@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Metadata = System.Collections.Generic.IDictionary<string, string>;
 
-namespace AsYouLikeit.FileProviders
+namespace AsYouLikeIt.FileProviders
 {
     public interface IFileMetadata
     {
