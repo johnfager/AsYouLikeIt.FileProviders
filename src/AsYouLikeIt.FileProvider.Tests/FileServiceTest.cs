@@ -12,6 +12,7 @@ namespace AsYouLikeIt.FileProvider.Tests
 
     public class AzureBlobFileServiceTests : FileServiceTest
     {
+
         public AzureBlobFileServiceTests()
         {
             // Build the configuration
@@ -57,8 +58,7 @@ namespace AsYouLikeIt.FileProvider.Tests
         protected IFileService _fileService;
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
-        //protected abstract IServiceProvider GetServiceProvider();
-
+        private const string TEST_CONTAINER_NAME = "testcontainer";
 
         [Fact]
         public void ValidateService()
@@ -72,7 +72,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var str1 = "My file contents 1";
             var str2 = "Second file contents.\nEnd of line.";
 
-            var filePath = "testcontainer/validation/test.txt";
+            var filePath = $"{TEST_CONTAINER_NAME}/ValidateMultipleFileServiceWriteTextAsync/validation/test.txt";
 
             await _fileService.WriteAllTextAsync(filePath, str1);
             Assert.True(await _fileService.ExistsAsync(filePath));
@@ -99,8 +99,8 @@ namespace AsYouLikeIt.FileProvider.Tests
             var str1 = "My file contents 1";
             var str2 = "Second file contents.\nEnd of line.";
 
-            var filePath = "testcontainer/validation/test.txt";
-            var filePath2 = "testcontainer/validation/test2.txt";
+            var filePath = $"{TEST_CONTAINER_NAME}/ValidateMultipleFileServiceWriteTextAsync/validation/test.txt";
+            var filePath2 = $"{TEST_CONTAINER_NAME}/ValidateMultipleFileServiceWriteTextAsync/validation/test2.txt";
 
             await _fileService.WriteAllTextAsync(filePath, str1);
             Assert.True(await _fileService.ExistsAsync(filePath));
@@ -130,7 +130,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var str1 = "My file contents 1";
             var str2 = "Second file contents.\nEnd of line.";
 
-            var directoryPath = "testcontainer/validation";
+            var directoryPath = $"{TEST_CONTAINER_NAME}/ValidationFileServiceDirectoryAsync/validation";
 
             var filePath = Format.PathMergeForwardSlashes(directoryPath, "test.txt");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "test2.txt");
@@ -153,7 +153,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var bytes1 = GenerateRandomBytes();
             var bytes2 = GenerateRandomBytes();
 
-            var directoryPath = "testcontainer/validation-bin";
+            var directoryPath = $"{TEST_CONTAINER_NAME}/ValidationFileServiceBytesAsync/validation-bin";
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
@@ -183,7 +183,12 @@ namespace AsYouLikeIt.FileProvider.Tests
             var bytes2 = GenerateRandomBytes();
             var bytes3 = GenerateRandomBytes();
 
-            var directoryPath = "testcontainer/validation-dirs";
+            // test the top level
+
+            var directoryPath = TEST_CONTAINER_NAME;
+
+            // ensure empty container
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "B/bytes2.bin");
@@ -200,6 +205,45 @@ namespace AsYouLikeIt.FileProvider.Tests
             Assert.True(dirs[1].EqualsCaseInsensitive("B"));
             Assert.True(dirs[2].EqualsCaseInsensitive("C"));
 
+
+            // go for another level down
+
+            directoryPath = $"{TEST_CONTAINER_NAME}/TestDirectoriesAsync";
+
+            filePath1 = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
+            filePath2 = Format.PathMergeForwardSlashes(directoryPath, "B/bytes2.bin");
+            filePath3 = Format.PathMergeForwardSlashes(directoryPath, "C/bytes3.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            dirs = await _fileService.ListSubDirectoriesAsync(directoryPath);
+
+            Assert.True(dirs.Count == 3);
+            Assert.True(dirs[0].EqualsCaseInsensitive("A"));
+            Assert.True(dirs[1].EqualsCaseInsensitive("B"));
+            Assert.True(dirs[2].EqualsCaseInsensitive("C"));
+
+            // go for another level down
+
+            directoryPath = $"{directoryPath}/TestDirectoriesAsync/validation-dirs";
+
+            filePath1 = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
+            filePath2 = Format.PathMergeForwardSlashes(directoryPath, "B/bytes2.bin");
+            filePath3 = Format.PathMergeForwardSlashes(directoryPath, "C/bytes3.bin");
+
+            await _fileService.WriteAllBytesAsync(filePath1, bytes1);
+            await _fileService.WriteAllBytesAsync(filePath2, bytes2);
+            await _fileService.WriteAllBytesAsync(filePath3, bytes3);
+
+            dirs = await _fileService.ListSubDirectoriesAsync(directoryPath);
+
+            Assert.True(dirs.Count == 3);
+            Assert.True(dirs[0].EqualsCaseInsensitive("A"));
+            Assert.True(dirs[1].EqualsCaseInsensitive("B"));
+            Assert.True(dirs[2].EqualsCaseInsensitive("C"));
+
             await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
         }
 
@@ -210,7 +254,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var bytes2 = GenerateRandomBytes();
             var bytes3 = GenerateRandomBytes();
 
-            var directoryPath = "testcontainer/validation-dirs";
+            var directoryPath = $"{TEST_CONTAINER_NAME}/TestFilesAsync";
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
@@ -242,7 +286,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var bytes2 = GenerateRandomBytes();
             var bytes3 = GenerateRandomBytes();
 
-            var directoryPath = "booker/xml/monthly/";
+            var directoryPath = $"{TEST_CONTAINER_NAME}/TestFiles2Async/xml/monthly/";
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
@@ -267,13 +311,14 @@ namespace AsYouLikeIt.FileProvider.Tests
         }
 
         [Fact]
-        public async Task TestRootDirectory()
+        public async Task TestRootDirectoryFiles()
         {
             var bytes1 = GenerateRandomBytes();
             var bytes2 = GenerateRandomBytes();
             var bytes3 = GenerateRandomBytes();
 
-            var directoryPath = "booker";
+            var directoryPath = $"{TEST_CONTAINER_NAME}";
+            await _fileService.DeleteDirectoryAndContentsAsync(directoryPath);
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2.bin");
@@ -286,6 +331,9 @@ namespace AsYouLikeIt.FileProvider.Tests
             // create a sub directory and file
             var filePathSub = Format.PathMergeForwardSlashes(directoryPath, "A/bytes.bin");
             await _fileService.WriteAllBytesAsync(filePathSub, bytes1);
+
+            var dirs = await _fileService.ListSubDirectoriesAsync(directoryPath);
+            Assert.Equal(1, dirs.Count);
 
             var files = await _fileService.ListFilesAsync(directoryPath);
 
@@ -304,7 +352,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             var bytes2 = GenerateRandomBytes();
             var bytes3 = GenerateRandomBytes();
 
-            var directoryPath = "booker/sde";
+            var directoryPath = $"{TEST_CONTAINER_NAME}/TestComplexFileName/sde";
 
             var filePath1 = Format.PathMergeForwardSlashes(directoryPath, "bytes1@2025.03.16.bin");
             var filePath2 = Format.PathMergeForwardSlashes(directoryPath, "bytes2-@2025.03.16.bin");
@@ -328,7 +376,7 @@ namespace AsYouLikeIt.FileProvider.Tests
         public async Task TestFileMetadataAsync()
         {
 
-            var directoryPath = "filemetadata/aaaa/bbb/";
+            var directoryPath = $"{TEST_CONTAINER_NAME}/filemetadata/aaaa/bbb/";
             var startTimeOffset = DateTimeOffset.UtcNow;
 
             var size1 = 256;
@@ -354,7 +402,7 @@ namespace AsYouLikeIt.FileProvider.Tests
             Assert.True(files[2].FileName.EqualsCaseInsensitive("bytes3.bin"));
 
             // check the metadata for each file
-            
+
             // check absolute directory path
             Assert.True(files[0].AbsoluteDirectoryPath.EqualsCaseInsensitive(directoryPath.StripAllLeadingAndTrailingSlashes()),
                 $"AbsoluteDirectoryPath should be '{directoryPath}' for file '{files[0].FileName}'");
@@ -379,11 +427,12 @@ namespace AsYouLikeIt.FileProvider.Tests
             // check last modified date
             foreach (var f in files)
             {
-                Assert.True(f.LastModified > startTimeOffset);
+                Assert.True((startTimeOffset - f.LastModified).TotalMinutes < 1,
+                    $"File modified: {f.LastModified} !>= {startTimeOffset}");
             }
 
             // check the extensions
-            foreach(var f in files)
+            foreach (var f in files)
             {
                 // Ensure the file extension is correct
                 var expectedExtension = ".bin"; // default expected extension for the test files
@@ -391,7 +440,7 @@ namespace AsYouLikeIt.FileProvider.Tests
                     $"FileExtension should be '{expectedExtension}' for file '{f.FileName}'");
             }
 
-            foreach(var f in files)
+            foreach (var f in files)
             {
                 var individualFile = await _fileService.GetFileMetadataAsync(f.AbsoluteFilePath);
                 Assert.True(f.FileName == individualFile.FileName,
