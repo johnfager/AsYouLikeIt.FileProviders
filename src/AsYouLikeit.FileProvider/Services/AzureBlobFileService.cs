@@ -56,7 +56,9 @@ namespace AsYouLikeIt.FileProviders.Services
 
             var directories = new List<string>();
 
-            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: blobPath.Path + "/", delimiter: "/"))
+            var prefix = (blobPath.Path == string.Empty || blobPath.Path == null) ? blobPath.Path : blobPath.Path + "/";
+
+            await foreach (var blobHierarchyItem in blobContainerClient.GetBlobsByHierarchyAsync(prefix: prefix, delimiter: "/"))
             {
                 if (blobHierarchyItem.IsPrefix && !string.Equals(blobHierarchyItem.Prefix, blobPath.Path))
                 {
@@ -338,6 +340,7 @@ namespace AsYouLikeIt.FileProviders.Services
 
             return blobContainerClient;
         }
+
         private async Task<(BlobClient BlobClient, BlobPath BlobPath)> GetBlobClientAndBlobPathAsync(string absolutePath)
         {
             var blobPath = GetBlobPath(absolutePath);
