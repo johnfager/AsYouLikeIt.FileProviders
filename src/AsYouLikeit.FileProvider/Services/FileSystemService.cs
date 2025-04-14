@@ -1,5 +1,4 @@
-﻿using AsYouLikeit.FileProviders;
-using AsYouLikeIt.Sdk.Common.Exceptions;
+﻿using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Microsoft.Extensions.Logging;
@@ -147,7 +146,35 @@ namespace AsYouLikeIt.FileProviders.Services
             return File.WriteAllBytesAsync(fileSystemPath, data.ToArray());
         }
 
-        public Task WriteAllTextAsync(string absoluteFilePath, string contents)
+        public async Task WriteStreamAsync(string absoluteFilePath, Stream stream, int bufferSize = 4 * 1024 * 1024)
+        {
+			long totalBytes = 0;
+
+			if (stream.CanSeek)
+			{
+				totalBytes = stream.Length;
+				_logger.LogDebug($"WriteStreamAsync '{absoluteFilePath}' - stream length: {totalBytes}");
+			}
+			else
+			{
+				_logger.LogDebug($"WriteStreamAsync '{absoluteFilePath}' - stream does not support length");
+			}
+
+			var fileSystemPath = GetFilePath(absoluteFilePath);
+			var fileInfo = new FileInfo(fileSystemPath);
+			if (fileSystemPath != null && !fileInfo.Directory.Exists)
+			{
+				Directory.CreateDirectory(fileInfo.Directory.FullName);
+			}
+			using (var fileStream = new FileStream(fileSystemPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize, FileOptions.SequentialScan))
+			{
+				await stream.CopyToAsync(fileStream);
+			}
+			_logger.LogInformation($"Completed upload of {absoluteFilePath} to file system.");
+		}
+
+
+		public Task WriteAllTextAsync(string absoluteFilePath, string contents)
         {
             var fileSystemPath = GetFilePath(absoluteFilePath);
             var fileInfo = new FileInfo(fileSystemPath);

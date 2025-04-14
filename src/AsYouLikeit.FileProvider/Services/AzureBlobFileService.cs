@@ -1,5 +1,4 @@
-﻿using AsYouLikeit.FileProviders;
-using AsYouLikeIt.Sdk.Common.Exceptions;
+﻿using AsYouLikeIt.Sdk.Common.Exceptions;
 using AsYouLikeIt.Sdk.Common.Extensions;
 using AsYouLikeIt.Sdk.Common.Utilities;
 using Azure.Storage.Blobs;
@@ -10,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -168,10 +168,26 @@ namespace AsYouLikeIt.FileProviders.Services
         public async Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data)
         {
             var blobClientAndBlobPath = await GetBlobClientAndBlobPathAsync(absoluteFilePath);
-            using (var stream = new MemoryStream(data.ToArray()))
+
+            byte[] checksum;
+            using (var md5 = MD5.Create())
             {
-                await blobClientAndBlobPath.BlobClient.UploadAsync(stream, overwrite: true);
+                using (var stream = new MemoryStream(data.ToArray()))
+                {
+                    checksum = md5.ComputeHash(stream);
+                    stream.Position = 0; // Reset the stream position for upload
+                    await blobClientAndBlobPath.BlobClient.UploadAsync(stream, overwrite: true);
+                }
             }
+
+            // Set the MD5 ContentHash in the blob's HTTP headers
+            var blobHttpHeaders = new BlobHttpHeaders
+            {
+                ContentHash = checksum
+            };
+            await blobClientAndBlobPath.BlobClient.SetHttpHeadersAsync(blobHttpHeaders);
+
+            // Set additional metadata
             var metadata = new Dictionary<string, string>
             {
                 { "absoluteFilePath", absoluteFilePath },
@@ -184,6 +200,76 @@ namespace AsYouLikeIt.FileProviders.Services
         {
             var data = Encoding.UTF8.GetBytes(content);
             return WriteAllBytesAsync(absoluteFilePath, data);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="absoluteFilePath"></param>
+        /// <param name="stream"></param>
+        /// <param name="chunkSize">Default of 4 MB</param>
+        /// <returns></returns>
+        public async Task WriteStreamAsync(string absoluteFilePath, Stream stream, int bufferSize = 4 * 1024 * 1024)
+        {
+            var blockBlobClient = await GetBlockBlobClientAsync(absoluteFilePath, true);
+
+            var blockList = new List<string>();
+            int blockId = 0;
+            byte[] buffer = new byte[bufferSize];
+            int bytesRead;
+            long totalBytesRead = 0;
+
+            long totalBytes = 0;
+
+            if (stream.CanSeek)
+            {
+                totalBytes = stream.Length;
+                _logger.LogDebug($"WriteStreamAsync '{absoluteFilePath}' - stream length: {totalBytes}");
+            }
+            else
+            {
+                _logger.LogDebug($"WriteStreamAsync '{absoluteFilePath}' - stream does not support length");
+            }
+            byte[] hash = null;
+            using (var md5 = MD5.Create())
+            {
+                while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    using (var chunkStream = new MemoryStream(buffer, 0, bytesRead))
+                    {
+                        string blockIdBase64 = Convert.ToBase64String(BitConverter.GetBytes(blockId));
+                        await blockBlobClient.StageBlockAsync(blockIdBase64, chunkStream);
+                        blockList.Add(blockIdBase64);
+                        blockId++;
+
+                        totalBytesRead += bytesRead;
+
+                        if (totalBytes > 0)
+                        {
+                            _logger.LogInformation($"Uploaded {bytesRead} bytes of {absoluteFilePath} to blob storage. {(double)totalBytesRead / totalBytes:P2}% complete.");
+                        }
+                        else
+                        {
+                            _logger.LogInformation($"Uploaded {bytesRead} bytes of {absoluteFilePath} to blob storage.");
+                        }
+
+                        // Update MD5 hash
+                        md5.TransformBlock(buffer, 0, bytesRead, null, 0);
+                    }
+                }
+                md5.TransformFinalBlock(buffer, 0, 0);
+                hash = md5.Hash;
+            }
+
+            await blockBlobClient.CommitBlockListAsync(blockList);
+           _logger.LogInformation($"Completed upload of {absoluteFilePath} to blob storage.");
+
+            // Set the MD5 hash in the blob properties
+            var blobHttpHeaders = new BlobHttpHeaders
+            {
+                ContentHash = hash
+            };
+            await blockBlobClient.SetHttpHeadersAsync(blobHttpHeaders);
         }
 
         public async Task<Stream> GetStreamAsync(string absoluteFilePath)
@@ -264,6 +350,16 @@ namespace AsYouLikeIt.FileProviders.Services
 
             var blobClient = blobContainerClient.GetBlobClient(blobPath.Path);
             return (blobClient, blobPath);
+        }
+
+        private async Task<BlockBlobClient> GetBlockBlobClientAsync(string absolutePath, bool rootPathIsOk = false)
+        {
+            var blobPath = GetBlobPath(absolutePath);
+
+            var blobContainerClient = new BlobContainerClient(_connString, blobPath.ContainerName);
+            await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+
+            return blobContainerClient.GetBlockBlobClient(blobPath.Path);
         }
 
         private async Task<BlobClient> GetBlobClientAsync(string absolutePath) => (await GetBlobClientAndBlobPathAsync(absolutePath)).BlobClient;

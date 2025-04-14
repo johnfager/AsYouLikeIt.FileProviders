@@ -1,4 +1,4 @@
-﻿using AsYouLikeit.FileProviders;
+﻿using AsYouLikeIt.FileProviders;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -28,6 +28,15 @@ namespace AsYouLikeIt.FileProviders.Services
         Task<Stream> GetStreamAsync(string absoluteFilePath);
 
         Task WriteAllBytesAsync(string absoluteFilePath, IEnumerable<byte> data);
+
+        /// <summary>
+        /// Uses a stream and buffer to stream the file in chunks.
+        /// </summary>
+        /// <param name="absoluteFilePath"></param>
+        /// <param name="stream"></param>
+        /// <param name="bufferSize">Defaults to 4 MB</param>
+        /// <returns></returns>
+        Task WriteStreamAsync(string absoluteFilePath, Stream stream, int bufferSize = 4 * 1024 * 1024);
 
         Task WriteAllTextAsync(string absoluteFilePath, string content);
 

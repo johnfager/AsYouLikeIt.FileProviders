@@ -311,6 +311,24 @@ namespace AsYouLikeIt.FileProvider.Tests
         }
 
         [Fact]
+        public async Task TestLargeStreamWrite()
+        {
+            // Create a large byte array
+            var largeBytes = GenerateRandomBytes(1024 * 1024 * 50); // 50 MB
+            // create a stream
+            using (var stream = new MemoryStream(largeBytes))
+            {
+                var filePath = $"{TEST_CONTAINER_NAME}/TestLargeStreamWrite/largefile.bin";
+                await _fileService.WriteStreamAsync(filePath, stream);
+                Assert.True(await _fileService.ExistsAsync(filePath));
+                var contents = await _fileService.ReadAllBytesAsync(filePath);
+                Assert.True(largeBytes.SequenceEqual(contents));
+                await _fileService.DeleteAsync(filePath);
+            }
+        }
+
+
+        [Fact]
         public async Task TestRootDirectoryFiles()
         {
             var bytes1 = GenerateRandomBytes();
